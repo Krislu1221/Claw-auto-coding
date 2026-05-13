@@ -1,0 +1,7 @@
+tests/
+.auto-coding/
+docs/
+*.pyc
+__pycache__/
+.env
+*.lock

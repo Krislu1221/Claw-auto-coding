@@ -1,4 +1,4 @@
-# Auto-Coding v3.3
+# Auto-Coding v3.4.1
 
 **版本**: v3.4.1  
 **更新日期**: 2026-05-13
@@ -15,13 +15,16 @@ Auto-Coding 是一个智能自主编码系统，通过多角色 Soul + 多模型
 
 **本质**: 单进程串行 + 多角色 Prompt + 多模型切换。不是真正的多 Agent 并行，而是每一步换不同的人格和模型来审视代码。
 
-**v3.3 核心特性**:
+**v3.4.1 核心特性**:
 - ✅ **内嵌 8 个 Agent Soul** — 编码专用 Soul 内置
-- ✅ **多模型切换** — 按阶段自动选择最优模型
+- ✅ **多模型切换** — 按阶段自动选择最优模型（环境变量可覆盖）
 - ✅ **按阶段分配模型** — 设计/编码/审查/测试/优化/验证各用不同模型
+- ✅ **统一模型降级** — Worker 通过 ModelSelector 动态分配，禁止硬编码
+- ✅ **三重防错自检** — 契约一致性 + 变更影响分析 + 结构审查前置
 - ✅ **状态持久化** — `.auto-coding/state.json`，session 断了可恢复
 - ✅ **审批策略** — `.auto-coding/rules.yaml`，敏感操作自动拦截
 - ✅ **Cron 监控** — 自动轮询任务状态，终态自动飞书通知
+- ✅ **5 项嵌入式工程技能** — grill-with-docs / tdd / zoom-out / diagnose / improve-architecture
 
 ---
 
@@ -137,7 +140,7 @@ openclaw config get providers
 
 ### Soul 加载警告
 
-v3.3 已内嵌 8 个 Soul，外部 `agency-agents` 目录不存在不影响功能。如需扩展：
+v3.4.1 已内嵌 8 个 Soul，外部 `agency-agents` 目录不存在不影响功能。如需扩展：
 
 ```bash
 export AUTO_CODING_AGENCY_PATH=/path/to/agency-agents
@@ -149,6 +152,8 @@ export AUTO_CODING_AGENCY_PATH=/path/to/agency-agents
 
 | 版本 | 日期 | 关键变更 |
 |------|------|---------|
+| v3.4.1 | 2026-05-13 | 统一模型降级 + 三重防错自检 + 阶段ID修复 + PII清理 |
+| v3.4 | 2026-05-11 | 5项嵌入式工程技能 (grill-with-docs/tdd/zoom-out/diagnose/improve-architecture) |
 | v3.3 | 2026-05-09 | 8 个 Soul + 按阶段模型分配 + 状态持久化 + 审批规则 + Cron 监控 |
 | v3.2 | 2026-04-27 | 全量迁移 volcengine-plan，8 模型测试，Reviewer 过度批评修复 |
 | v3.1 | 2026-04-20 | 多 Agent 架构设计 |
@@ -160,4 +165,4 @@ export AUTO_CODING_AGENCY_PATH=/path/to/agency-agents
 
 ---
 
-*Last updated: 2026-05-09 | Auto-Coding v3.3*
+*Last updated: 2026-05-13 | Auto-Coding v3.4.1*
