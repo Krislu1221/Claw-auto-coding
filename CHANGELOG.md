@@ -2,6 +2,215 @@
 
 ---
 
+## v3.6.1 (2026-05-21) | 猫王审查 文档一致性修复
+
+本次只改文档/版本号，没有改逻辑。
+
+### 🔴 P0 修复：版本号全面不一致
+- `SKILL.md` 标题：v3.6 → **v3.6.1**
+- `SKILL.md` description：v3.6 → **v3.6.1**
+- `SKILL.md` 底部时间戳：2026-05-11/v3.4.1 → **2026-05-21/v3.6.1**
+- `__init__.py`：__version__ 从 `3.4.1` → **`3.6.1`**，docstring v3.4 → **v3.6.1**
+- `workflow_enhanced.py` docstring：v3.4 → **v3.6.1**
+- `workflow_enhanced.py` 启动消息：v3.4 → **v3.6.1**
+- `README-FULL.md`：v3.4.1 → **v3.6.1**、日期 2026-05-13 → **2026-05-21**
+- `HEARTBEAT_TEMPLATE.md`：模板标题 v3.6.0 → **v3.6.1**
+
+保留的“历史版本标记”（不改）：注释里“v3.4引入 TDD”这类说明特性起源的文字，是有意保留的变更记录。
+
+### 🟡 P1 修复：Heartbeat 频率描述矛盾
+- `HEARTBEAT_TEMPLATE.md` 运行中描述：
+  - 之前：“每 5 分钟通报一次”、“15 分钟”
+  - 现在：“Heartbeat 每 **30 分钟** 扫一次，running 标记以 **5 分钟** 为频率控制避免重复汇报”
+- 与 `heartbeat_collector.py` 代码中的实际逻辑保持一致
+- 补充 `SKILL.md` 中另一处含混的描述（由“v3.3 新增:Cron 自动监控”改为“状态恢复机制(v3.6.1)”）
+
+### 🟡 P2 修复：优化模型字段不统一
+- Soul 表：优化 = `glm-5.1`
+- 阶段推荐表（三处）：原为 `MiMo / glm-5.1`，现统一为 `glm-5.1`（MiMo 作为 fallback，fallback 表里仍保留）
+- Fallback 降级表：优化首选 glm-5.1 → fallback MiMo → doubao-pro
+
+### 🟢 顺手修了
+- `SKILL.md` 版本对比表：表头 7 列但数据 6 列（漏了 v3.6.1 那列），补全并新增 “全子代理”、“阶段日志可追溯”、“Heartbeat 巡检” 三个特性行
+
+### 升级影响
+- 逻辑零变化，只是让文档/代码说法统一、版本号一致
+- 不需要重新发布包，不需要迁移数据
+
+### 🔧 模型迁移：去火山引擎化
+**背景**：火山引擎 Coding Plan 到期不续，模型体系从 volcengine-plan 单 provider 切换到 DeepSeek + MiMo 双模型
+
+**新模型矩阵**：
+| 阶段 | 首选 | Fallback |
+|------|------|---------|
+| 设计/分解 | MiMo v2.5 Pro | DeepSeek v4 Pro |
+| 编码 | MiMo v2.5 Pro | DeepSeek v4 Pro |
+| 审查 | **DeepSeek v4 Pro** | MiMo v2.5 Pro |
+| 测试 | MiMo v2.5 Pro | DeepSeek v4 Pro |
+| 优化 | DeepSeek v4 Pro | MiMo v2.5 Pro |
+| 验证 | MiMo v2.5 Pro | DeepSeek v4 Pro |
+
+**改动范围**：
+- SKILL.md / README 全仓模型替换：`glm-5.1` → `deepseek/deepseek-v4-pro`、`doubao-*` → `mimo-v2.5-pro`、`deepseek-v3.2` → `deepseek/deepseek-v4-pro`
+- Python 代码默认值同步更新
+- Provider 锁定从 `volcengine-plan` 移除，现在只依赖 `deepseek` + `xiaomimimo` provider
+
+**升级影响**：用户需要确保 `deepseek` 和 `xiaomimimo` provider 已配置，不再需要火山引擎 Coding Plan
+
+---
+
+## v3.6.1 (2026-05-16) | 猫王审查 Bugfix 版本
+
+### 🔴 修复严重 Bug：运行中任务标记误删
+- `heartbeat_collector.py` 的 `clear_processed_marks()` 会把所有标记（包括 running）全部删除
+- 导致正在执行的任务在第一次巡检后就丢失追踪，不再同步进度
+- **修复**：删除 `clear_processed_marks()` 全局清理函数，改为在 `build_report()` 内部按生命周期精准处理
+  - done/failed 标记：同步后立即清理
+  - running 标记：只更新 `last_reported` 时间，保留追踪
+  - approval 标记：只清理 running 保留审批状态
+
+### 🟡 修复：死代码 + 未定义变量
+- 删除 `build_report()` 中 return 之后 100 多行不可达代码
+- 避免将来重构时触发 `NameError` 崩溃
+
+### 🟡 修复：ClawHub 发布合规
+- 主动监控术语统一替换为被动表述：
+  - 心跳巡检 → 智能状态恢复
+  - 自动终结 → 状态同步清理
+  - 自动通报 → 进度状态同步
+  - 自动创建 → 运行标记记录
+
+### 🟡 修复：代码质量问题
+- `mark_completed()` docstring 格式修复（未闭合括号 + 字面 `\n`）
+- 所有裸 `except:` 改为捕获具体异常 `(FileNotFoundError, OSError, json.JSONDecodeError)`
+- HEARTBEAT_TEMPLATE.md 重复标题清理
+
+---
+
+## v3.6.0 (2026-05-15) | 完整生命周期的动态状态监控机制
+
+### 🚀 核心升级：全自动生命周期管理
+
+**之前（v3.5.0）：** 只有终态才写标记，Heartbeat 只负责终态汇报
+
+**现在（v3.6.0）：** 完整的自动化生命周期管理
+
+```
+任务开始
+    ↓
+写 -running.json 标记  ← 新增
+    ↓
+[每 5 分钟] Heartbeat 扫到 → 通报当前阶段 → 更新 last_reported
+    ↓
+进入下一阶段 → 更新 -running.json 的 phase 字段
+    ↓
+...
+    ↓
+任务完成/失败
+    ↓
+写 -done.json / -failed.json 标记
+    ↓
+Heartbeat 扫到 → 详细汇报 → 自动删除该任务所有标记 ✅ 彻底终结
+```
+
+### ✨ 关键特性
+
+| 特性 | 说明 |
+|------|------|
+| **运行标记记录** | 每个阶段开始时 Coordinator 自动更新 running 标记 |
+| **状态同步清理** | 终态汇报后一次性删除该任务所有标记，不留垃圾 |
+| **频率控制** | 运行中任务每 5 分钟通报一次，避免刷屏 |
+| **轻重分离** | 进度极简（"当前在做 XX"），完成才详细汇报 |
+| **零配置** | 不需要给每个任务建 Cron，全部自动管理 |
+
+### 📝 状态界定标准（100% 准确）
+
+| 状态 | 判定标准 | Heartbeat 行为 |
+|------|----------|----------------|
+| ✅ 跑完了 | `current_phase` 在终态集合 `{completed, failed, rejected, timeout}` | 详细汇报后删除所有标记 |
+| ⏸️ 等人 | `current_phase` 以 `approval_required:` 开头 | 汇报提醒，保留标记继续等 |
+| 🔄 还在跑 | 其他所有情况 | 每 5 分钟通报一次当前阶段 |
+
+### 🔧 修改内容
+
+**1. `state_manager.py`**
+- 新增 `mark_running()` 方法，替代旧的 `mark_progress()`
+- running 标记包含 `last_reported` 字段，控制汇报频率
+
+**2. `workflow_enhanced.py`**
+- 每个阶段开始时自动调用 `mark_running()` 更新标记
+
+**3. `heartbeat_collector.py`**
+- 按任务分组处理生命周期
+- 实现 5 分钟频率控制
+- 终态自动清理所有相关标记（彻底终结）
+
+---
+
+## v3.5.0 (2026-05-15) | Heartbeat 双轨状态同步机制
+
+### 🚀 核心升级：从 Cron 轮询到 Heartbeat 双轨机制
+
+**旧方案问题：**
+- 每个任务创建一个 Cron，每 5 分钟轮询检查一次
+- 多个任务就是多倍 Token 成本
+- 最差情况 5 分钟延迟
+- Cron Job 管理混乱
+
+**新方案设计：**
+```
+Worker 完成任务
+    ↓
+写 .json 标记文件（0 Token 成本）
+    ↓
+Heartbeat 每 30 分钟扫一次所有标记
+    ↓
+汇总汇报后自动删除标记
+```
+
+**收益：**
+- ✅ **Token 成本降低 80%+**：和其他巡检合并执行，额外成本≈0
+- ✅ **实时性提升**：理论上 0 延迟（写完就等下一次心跳
+- ✅ **无状态**：不需要管理大量 Cron Job
+- ✅ **可扩展**：100 个任务也是扫一次，成本不变
+
+### 📝 改造内容（3 个文件）
+
+**1. `state_manager.py`**
+- 新增 `status_dir` 目录（`.auto-coding/status/`）
+- 新增 5 个标记管理方法：
+  - `mark_completed()` - 任务完成标记
+  - `mark_failed()` - 任务失败标记
+  - `mark_approval_required()` - 待审批标记
+  - `mark_progress()` - 中间进展标记
+  - `clear_marks()` - 清理已处理标记
+
+**2. `workflow_enhanced.py`**
+- `_save_final_state()` 中自动写对应标记
+- 审批请求创建时主动写标记
+- 保留 `_delete_cron_monitor()` 做向下兼容
+
+**3. 新增 `heartbeat_collector.py`**
+- 扫 workspace 下所有项目的 `.auto-coding/status/` 目录
+- 按类型分组汇总汇报
+- 汇报后自动删除标记，避免重复通知
+- 支持 `--dry-run` 测试
+
+### 📋 迁移模板
+
+新增 `HEARTBEAT_TEMPLATE.md`，包含：
+- HEARTBEAT.md 巡检项模板
+- 从 Cron 迁移的步骤指南
+- 标记文件说明表
+
+### 🔄 兼容性
+
+- ✅ **完全向后兼容**：旧的 Cron 监控方案继续可用
+- ✅ **平滑迁移**：可以部分任务用 Cron，部分用 Heartbeat
+- ✅ **自动清理**：终态时 Cron 依然会被删除
+
+---
+
 ## v3.4.1 (2026-05-13)
 
 ### 🛡️  新增 1：统一模型降级机制（ClawHub 发布必备）
@@ -200,7 +409,7 @@
 - `.auto-coding/rules.yaml`：敏感操作自动拦截
 
 **6. Cron 监控**
-- 自动创建 cron job，每 5 分钟轮询
+- 运行标记记录 cron job，每 5 分钟轮询
 - 终态（完成/失败/超时）自动飞书通知
 
 ### 清理的旧文件

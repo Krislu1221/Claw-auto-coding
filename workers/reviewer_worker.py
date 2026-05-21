@@ -41,7 +41,7 @@ class ReviewerWorker:
     """
     Reviewer Worker - 代码审查专家
     
-    使用模型：volcengine-plan/deepseek-v3.2
+    使用模型：deepseek/deepseek-v4-pro
     核心约束：审查边界（需求明确的做法优先于极简主义）
     """
 
@@ -52,7 +52,7 @@ class ReviewerWorker:
     def __init__(self):
         # 注意：实际审查模型由 auto_coding_workflow._get_agent_model() 决定
         # 此处仅保留默认值作为参考
-        self.model = "volcengine-plan/deepseek-v3.2"
+        self.model = "deepseek/deepseek-v4-pro"
 
     def parse_review_output(self, raw_text: str) -> ReviewResult:
         """

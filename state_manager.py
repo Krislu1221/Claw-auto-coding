@@ -11,7 +11,7 @@ import uuid
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -31,7 +31,7 @@ class TaskState:
 @dataclass
 class WorkflowState:
     """工作流全局状态"""
-    version: str = "1.0"
+    version: str = "3.6.1"
     task_id: str = ""
     requirements: str = ""
     current_phase: str = "idle"         # idle/design/decomposition/coding/testing/reflection/optimization/verification/output
@@ -62,9 +62,11 @@ class StateManager:
         self.project_dir = Path(project_dir)
         self.state_dir = self.project_dir / ".auto-coding"
         self.state_file = self.state_dir / "state.json"
+        self.status_dir = self.state_dir / "status"  # 状态同步标记目录
         
         # 确保目录存在
         self.state_dir.mkdir(parents=True, exist_ok=True)
+        self.status_dir.mkdir(parents=True, exist_ok=True)
     
     def init_state(self, requirements: str = "", task_id: str = None) -> WorkflowState:
         """初始化新任务状态"""
@@ -252,3 +254,98 @@ class StateManager:
             approval_queue=data.get("approval_queue", []),
             agent_usage=data.get("agent_usage", {}),
         )
+
+    # ==================== 状态同步标记文件管理（双轨机制）====================
+    # Worker 主动写标记，状态恢复时扫标记，无需高频轮询
+    # 
+    # 设计思路：
+    #   旧方案：Cron 每 5 分钟跑一次 check_auto_coding_status.py
+    #           → 每次都要启动 Python + 读状态文件
+    #           → 多个任务就是多倍成本
+    #           → 最差情况 5 分钟延迟
+    #
+    #   新方案：Worker 完成时写 .json 标记文件（0 Token 成本）
+    #           状态恢复时扫一次所有标记
+    #           → 和其他恢复逻辑合并，额外成本≈0
+    #           → 理论上 0 延迟
+    # ==========================================================================
+
+    def mark_completed(self, state: WorkflowState, summary: str = ""):
+        """任务完成，写完成标记（给状态同步使用）
+
+        Worker 完成后主动调用，0 Token 成本
+        """
+        mark_file = self.status_dir / f"{state.task_id}-done.json"
+        mark_data = {
+            "task_id": state.task_id,
+            "status": "completed",
+            "current_phase": state.current_phase,
+            "completed_phases": state.completed_phases,
+            "requirements": state.requirements[:120],
+            "summary": summary,
+            "start_time": state.created_at,
+            "completed_at": datetime.now().isoformat(),
+            "project_dir": str(self.project_dir),
+        }
+        with open(mark_file, "w", encoding="utf-8") as f:
+            json.dump(mark_data, f, ensure_ascii=False, indent=2)
+        print(f"✅ 已写完成标记：{mark_file.name}")
+
+    def mark_running(self, state: WorkflowState, phase: str, message: str = ""):
+        """写运行中标记（每个阶段开始时调用）
+        
+        Heartbeat 扫到这个标记，就知道任务还在跑，每 5 分钟通报一次进度。
+        终态时这个文件会被 collector 自动删除。
+        """
+        mark_file = self.status_dir / f"{state.task_id}-running.json"
+        mark_data = {
+            "task_id": state.task_id,
+            "status": "running",
+            "current_phase": phase,
+            "phase_message": message,
+            "completed_phases": state.completed_phases,
+            "start_time": state.created_at,
+            "last_updated": datetime.now().isoformat(),
+            "last_reported": None,  # Heartbeat 汇报后更新这个时间
+            "project_dir": str(self.project_dir),
+        }
+        with open(mark_file, "w", encoding="utf-8") as f:
+            json.dump(mark_data, f, ensure_ascii=False, indent=2)
+    
+    def mark_progress(self, state: WorkflowState, phase: str, message: str):
+        """写进展标记（已废弃，改用 mark_running）"""
+        # 向下兼容
+        self.mark_running(state, phase, message)
+
+    def mark_failed(self, state: WorkflowState, error: str):
+        """任务失败标记"""
+        mark_file = self.status_dir / f"{state.task_id}-failed.json"
+        mark_data = {
+            "task_id": state.task_id,
+            "status": "failed",
+            "error": error,
+            "completed_phases": state.completed_phases,
+            "start_time": state.created_at,
+            "failed_at": datetime.now().isoformat(),
+            "project_dir": str(self.project_dir),
+        }
+        with open(mark_file, "w", encoding="utf-8") as f:
+            json.dump(mark_data, f, ensure_ascii=False, indent=2)
+        print(f"❌ 已写失败标记：{mark_file.name}")
+
+    def mark_approval_required(self, state: WorkflowState, approval_id: str, operation: str):
+        """需要审批标记"""
+        mark_file = self.status_dir / f"{state.task_id}-approval.json"
+        mark_data = {
+            "task_id": state.task_id,
+            "status": "approval_required",
+            "approval_id": approval_id,
+            "operation": operation,
+            "created_at": datetime.now().isoformat(),
+            "project_dir": str(self.project_dir),
+        }
+        with open(mark_file, "w", encoding="utf-8") as f:
+            json.dump(mark_data, f, ensure_ascii=False, indent=2)
+        print(f"⏸️  已写审批标记：{mark_file.name}")
+
+

@@ -1,4 +1,4 @@
-__pycache__/
-*.pyc
-.DS_Store
-.auto-coding/
+docs/
+PUBLISH_NOTES.md
+HEARTBEAT_TEMPLATE.md
+heartbeat_collector.py

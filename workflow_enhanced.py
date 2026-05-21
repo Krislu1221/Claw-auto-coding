@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Auto-Coding Workflow Enhanced (v3.4)
+Auto-Coding Workflow Enhanced (v3.6.1)
 
 基于 AutoCodingWorkflow (v3.2) 增强：
 1. 状态持久化（.auto-coding/state.json）
@@ -185,7 +185,7 @@ class AutoCodingWorkflowEnhanced:
                 task_id=self.task_id
             )
             print(f"\n{'='*60}")
-            print(f"🚀 Auto-Coding Enhanced (v3.4) 启动")
+            print(f"🚀 Auto-Coding Enhanced (v3.6.1) 启动")
             print(f"{'='*60}")
             print(f"📋 需求：{self.requirements[:100]}...")
             print(f"📁 项目目录：{self.project_dir}")
@@ -254,6 +254,14 @@ class AutoCodingWorkflowEnhanced:
             # 执行阶段
             phase_id = phase_config.id
             self.current_phase = phase_id
+            
+            # ===== Heartbeat 双轨机制：更新运行中标记 =====
+            # Heartbeat 每 5 分钟扫到这个标记就会通报进度
+            self.state_manager.mark_running(
+                self.state,
+                phase_id,
+                phase_config.description
+            )
 
             print(f"\n{'='*60}")
             print(f"📝 阶段：{phase_id} ({phase_config.description})")
@@ -279,6 +287,13 @@ class AutoCodingWorkflowEnhanced:
                             "phase": phase_id,
                         }
                     )
+                    # ===== Heartbeat 双轨机制：写审批标记 =====
+                    self.state_manager.mark_approval_required(
+                        self.state, 
+                        approval_id, 
+                        f"阶段审批：{phase_id}"
+                    )
+                    
                     # 生成飞书审批消息（由外层发送）
                     self.approval_message = self.notifier.send_approval_request(
                         task_id=self.state.task_id,
@@ -290,7 +305,7 @@ class AutoCodingWorkflowEnhanced:
                     print(f"\n⏸️  审批请求已创建：[{approval_id}]")
                     print(f"   原因：{approval_check.reason}")
                     print(f"   已生成飞书通知，等待外层发送")
-                    self._save_final_state("approval_required")
+                    self._save_final_state(f"approval_required:{approval_id}")
                     return self.result
 
                 # 标记阶段完成
@@ -929,7 +944,7 @@ src/
         self.iterations = self.state.iterations
 
     def _save_final_state(self, status: str):
-        """保存最终状态"""
+        """保存最终状态，并写心跳标记（Heartbeat 双轨机制）"""
         if self.state:
             self.state_manager.save_progress(
                 self.state,
@@ -938,7 +953,20 @@ src/
                 context=self.context,
                 iterations=self.iterations,
             )
-        # 终态时删除 cron 监控
+            
+            # ===== Heartbeat 双轨机制：写标记文件 =====
+            # 不再依赖 Cron 高频轮询，Worker 主动写标记，Heartbeat 巡检扫
+            if status == "completed":
+                summary = self.result.get("final_summary", "") or "任务完成"
+                self.state_manager.mark_completed(self.state, summary)
+            elif status in {"failed", "rejected", "timeout"}:
+                error = self.result.get("error", f"任务{status}")
+                self.state_manager.mark_failed(self.state, error)
+            elif status.startswith("approval_required"):
+                approval_id = status.split(":")[-1] if ":" in status else "unknown"
+                self.state_manager.mark_approval_required(self.state, approval_id, "等待用户确认")
+        
+        # 终态时删除 cron 监控（兼容旧方案，逐步淘汰）
         final_states = {"completed", "failed", "rejected", "timeout"}
         if status in final_states:
             self._delete_cron_monitor()

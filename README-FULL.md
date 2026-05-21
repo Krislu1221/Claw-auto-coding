@@ -1,7 +1,7 @@
-# Auto-Coding v3.4.1 — 完整文档
+# Auto-Coding v3.6.1 — 完整文档
 
-**版本**: v3.4.1
-**更新日期**: 2026-05-13
+**版本**: v3.6.1
+**更新日期**: 2026-05-21
 
 ---
 
@@ -30,7 +30,7 @@
 
 **v3.3 关键变更**:
 - ✅ **内嵌 8 个 Agent Soul**：不再依赖外部 `agency-agents` 目录，编码专用 Soul 内置
-- ✅ **火山引擎 Coding Plan**：全部模型来自 `volcengine-plan`
+- ✅ **双模型驱动**：MiMo v2.5 Pro + DeepSeek v4 Pro
 - ✅ **按阶段分配模型**：设计/编码/审查/测试/优化/验证各用不同模型
 - ✅ **状态持久化**：项目级 `.auto-coding/state.json`，session 断了可恢复
 - ✅ **审批策略**：项目级 `.auto-coding/rules.yaml`，敏感操作自动拦截
@@ -56,13 +56,13 @@
 ### 1. 环境要求
 
 - OpenClaw 2026.5.7+
-- `volcengine-plan` provider 已配置（Coding Plan Pro 或 Lite）
+- `xiaomimimo` + `deepseek` provider 已配置
 - `openclaw` CLI 可用
 
 ```bash
 # 验证
 openclaw --version
-openclaw infer model run --model volcengine-plan/doubao-seed-2.0-code --prompt "hello" --json --local
+openclaw infer model run --model xiaomimimo/mimo-v2.5-pro --prompt "hello" --json --local
 ```
 
 ### 2. 基本使用
@@ -127,7 +127,7 @@ Python 脚本无法直接 import `openclaw.tools`，改用 CLI 调用：
 
 ```
 openclaw infer model run
-    --model volcengine-plan/doubao-seed-2.0-code
+    --model xiaomimimo/mimo-v2.5-pro
     --prompt "[SYSTEM]\n{system_prompt}\n\n[USER]\n{task_prompt}"
     --json
     --local
@@ -235,23 +235,23 @@ result = await workflow.run()
 phases:
   - name: design
     agent: engineering-software-architect
-    model: volcengine-plan/doubao-seed-2.0-pro
+    model: xiaomimimo/mimo-v2.5-pro
     enabled: true
   - name: implementation
     agent: engineering-senior-developer
-    model: volcengine-plan/doubao-seed-2.0-code
+    model: xiaomimimo/mimo-v2.5-pro
     enabled: true
   - name: review
     agent: engineering-code-reviewer
-    model: volcengine-plan/deepseek-v3.2
+    model: xiaomimimo/deepseek/deepseek-v4-pro
     enabled: true
   - name: optimization
     agent: engineering-optimizer
-    model: volcengine-plan/glm-5.1
+    model: xiaomimimo/DeepSeek v4 Pro
     enabled: true
   - name: verification
     agent: testing-verifier
-    model: volcengine-plan/glm-5.1
+    model: xiaomimimo/DeepSeek v4 Pro
     enabled: true
 ```
 
@@ -328,10 +328,10 @@ notify_on_complete: true
 **排查**:
 ```bash
 # 1. 验证 CLI 可用
-openclaw infer model run --model volcengine-plan/doubao-seed-2.0-code --prompt "hello" --json --local
+openclaw infer model run --model xiaomimimo/mimo-v2.5-pro --prompt "hello" --json --local
 
 # 2. 检查模型是否在 models.json 中配置
-openclaw models list | grep volcengine-plan
+openclaw models list | grep xiaomimimo
 
 # 3. 检查 API Key 是否有效
 # 火山引擎 Coding Plan 需要单独购买，确保额度充足
@@ -366,10 +366,10 @@ export AUTO_CODING_AGENCY_PATH=/path/to/agency-agents
 - **新增**: 按阶段模型分配（设计/编码/审查/测试/优化/验证各用不同模型）
 - **修复**: 模型调用链改用 `openclaw infer model run --json --local`
 - **修复**: Soul 内嵌化，不再依赖外部 `agency-agents` 目录
-- **修复**: Fallback 模型改为 `volcengine-plan/doubao-seed-2.0-code`
+- **修复**: Fallback 模型改为 `xiaomimimo/MiMo v2.5 Pro`
 
 ### v3.2 (2026-04-27)
-- **迁移**: 全量迁移到 `volcengine-plan` provider
+- **迁移**: 全量迁移到 `xiaomimimo` provider
 - **测试**: 8 个模型全量测试（速度 3s ~ 106s）
 - **分配**: Coordinator→doubao-pro, Engineering→doubao-code, Reviewer→deepseek, Testing→doubao-lite
 - **修复**: ReviewerWorker 过度批评问题（新增审查边界约束）

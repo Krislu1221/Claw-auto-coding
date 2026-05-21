@@ -15,42 +15,42 @@
 ### Step 1: Design (设计)
 - 分析需求并设计技术方案
 - 技术栈选型、架构设计、目录结构
-- 使用模型：`volcengine-plan/doubao-seed-2.0-pro`
+- 使用模型：`xiaomimimo/mimo-v2.5-pro`
 - Agent：`engineering-software-architect`
 
 ### Step 2: Decomposition (分解)
 - 根据技术方案拆解任务
 - 定义任务依赖关系
-- 使用模型：`volcengine-plan/doubao-seed-2.0-pro`
+- 使用模型：`xiaomimimo/mimo-v2.5-pro`
 - Agent：`engineering-software-architect`
 
 ### Step 3: Coding (编码)
 - 按依赖顺序执行编码任务
 - Engineering Worker 生成代码
-- 使用模型：`volcengine-plan/doubao-seed-2.0-code`
+- 使用模型：`xiaomimimo/mimo-v2.5-pro`
 - Agent：`engineering-senior-developer`
 
 ### Step 4: Testing (测试)
 - 编写测试用例并验证功能
-- 使用模型：`volcengine-plan/doubao-seed-2.0-pro`
+- 使用模型：`xiaomimimo/mimo-v2.5-pro`
 - Agent：`testing-api-tester`
 
 ### Step 5: Reflection (反思)
 - 审查代码质量
 - 识别问题和改进建议
-- 使用模型：`volcengine-plan/deepseek-v3.2`
+- 使用模型：`deepseek/deepseek-v4-pro`
 - Agent：`engineering-code-reviewer`
 
 ### Step 6: Optimization (优化)
 - 根据审查结果修复和优化
 - 追求优雅实现和性能最优
-- 使用模型：`volcengine-plan/glm-5.1`
+- 使用模型：`deepseek/deepseek-v4-pro`
 - Agent：`engineering-optimizer`
 
 ### Step 7: Verification (验证)
 - 最终交付验证
 - 功能完整性、边界覆盖、文档完整
-- 使用模型：`volcengine-plan/glm-5.1`
+- 使用模型：`deepseek/deepseek-v4-pro`
 - Agent：`testing-verifier`
 
 ### Step 8: Output (输出)
@@ -87,9 +87,9 @@
 
 | 阶段 | 模型 | Soul |
 |------|------|------|
-| 设计/分解 | `volcengine-plan/doubao-seed-2.0-pro` | software-architect |
-| 编码 | `volcengine-plan/doubao-seed-2.0-code` | senior-developer |
-| 审查 | `volcengine-plan/deepseek-v3.2` | code-reviewer |
-| 测试 | `volcengine-plan/doubao-seed-2.0-pro` | api-tester |
-| 优化 | `volcengine-plan/glm-5.1` | optimizer |
-| 验证 | `volcengine-plan/glm-5.1` | verifier |
+| 设计/分解 | `xiaomimimo/mimo-v2.5-pro` | software-architect |
+| 编码 | `xiaomimimo/mimo-v2.5-pro` | senior-developer |
+| 审查 | `deepseek/deepseek-v4-pro` | code-reviewer |
+| 测试 | `xiaomimimo/mimo-v2.5-pro` | api-tester |
+| 优化 | `deepseek/deepseek-v4-pro` | optimizer |
+| 验证 | `deepseek/deepseek-v4-pro` | verifier |

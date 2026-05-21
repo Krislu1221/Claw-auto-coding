@@ -767,7 +767,7 @@ class AutoCodingWorkflow:
         return review_text
     
     async def step_optimization(self):
-        """步骤 6: 优化 - 改进和修复（v3.3: 用优化工程师 + glm-5.1）"""
+        """步骤 6: 优化 - 改进和修复（v3.6: 用代码优化工程师 + DeepSeek v4 Pro）"""
         print(f"   根据反思结果优化代码...")
         
         agent_id = "engineering/engineering-optimizer"
@@ -1162,16 +1162,16 @@ if __name__ == "__main__":
         # 按完整 agent_id 映射
         # v3.4: 模型映射可通过环境变量覆盖
         # 环境变量格式: AUTO_CODING_MODEL_<ROLE>=provider/model
-        # 例如: AUTO_CODING_MODEL_ARCHITECT=volcengine-plan/doubao-seed-2.0-pro
+        # 例如: AUTO_CODING_MODEL_ARCHITECT=xiaomimimo/mimo-v2.5-pro
         DEFAULT_MODEL_MAP = {
-            "engineering/engineering-software-architect": "volcengine-plan/doubao-seed-2.0-pro",
-            "engineering/engineering-senior-developer": "volcengine-plan/doubao-seed-2.0-code",
-            "engineering/engineering-code-reviewer": "volcengine-plan/deepseek-v3.2",
-            "engineering/engineering-frontend-developer": "volcengine-plan/doubao-seed-2.0-code",
-            "engineering/engineering-backend-architect": "volcengine-plan/doubao-seed-2.0-pro",
-            "testing/testing-api-tester": "volcengine-plan/doubao-seed-2.0-pro",
-            "engineering/engineering-optimizer": "volcengine-plan/glm-5.1",
-            "testing/testing-verifier": "volcengine-plan/glm-5.1",
+            "engineering/engineering-software-architect": "xiaomimimo/mimo-v2.5-pro",
+            "engineering/engineering-senior-developer": "xiaomimimo/mimo-v2.5-pro",
+            "engineering/engineering-code-reviewer": "deepseek/deepseek-v4-pro",
+            "engineering/engineering-frontend-developer": "xiaomimimo/mimo-v2.5-pro",
+            "engineering/engineering-backend-architect": "xiaomimimo/mimo-v2.5-pro",
+            "testing/testing-api-tester": "xiaomimimo/mimo-v2.5-pro",
+            "engineering/engineering-optimizer": "deepseek/deepseek-v4-pro",
+            "testing/testing-verifier": "deepseek/deepseek-v4-pro",
         }
 
         # 环境变量覆盖映射（key 为 agent_id 中的角色名，如 architect、developer）
@@ -1200,11 +1200,11 @@ if __name__ == "__main__":
         # fallback：按角色前缀
         role_prefix = agent_id.split('/')[0]
         ROLE_MAP = {
-            "engineering": "volcengine-plan/doubao-seed-2.0-code",
-            "testing": "volcengine-plan/doubao-seed-2.0-pro",
-            "design": "volcengine-plan/doubao-seed-2.0-pro",
+            "engineering": "xiaomimimo/mimo-v2.5-pro",
+            "testing": "xiaomimimo/mimo-v2.5-pro",
+            "design": "xiaomimimo/mimo-v2.5-pro",
         }
-        return ROLE_MAP.get(role_prefix, "volcengine-plan/doubao-seed-2.0-code")
+        return ROLE_MAP.get(role_prefix, "xiaomimimo/mimo-v2.5-pro")
     
     def _select_agent_for_task(self, task: Dict) -> str:
         """

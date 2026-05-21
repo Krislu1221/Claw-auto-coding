@@ -237,26 +237,26 @@ description: 自定义 Auto-Coding 工作流
 phases:
   - id: analyze
     agent: AutoAnalyzer
-    model: deepseek-v3.2
+    model: deepseek/deepseek-v4-pro
     description: 需求分析
     prompt: 分析需求复杂度，确认边界条件
 
   - id: research
     agent: Coordinator
-    model: doubao-seed-2.0-pro
+    model: xiaomimimo/mimo-v2.5-pro
     description: 技术调研
     prompt: 拆解需求，识别技术依赖
 
   - id: synthesis
     agent: Coordinator
-    model: doubao-seed-2.0-pro
+    model: xiaomimimo/mimo-v2.5-pro
     description: 架构设计
     prompt: 设计最小可行架构
     skippable: true  # A/B 级任务可跳过
 
   - id: implementation
     agent: EngineeringWorker
-    model: doubao-seed-2.0-code
+    model: xiaomimimo/mimo-v2.5-pro
     description: 代码实现
     prompt: 按 Karpathy 铁律生成代码
     gates:
@@ -267,13 +267,13 @@ phases:
 
   - id: review
     agent: ReviewerWorker
-    model: deepseek-v3.2
+    model: deepseek/deepseek-v4-pro
     description: 代码审查
     prompt: 审查代码质量和过度设计
 
   - id: verification
     agent: TestingWorker
-    model: doubao-seed-2.0-lite
+    model: xiaomimimo/mimo-v2.5
     description: 测试验证
     prompt: 运行测试，验证功能
 
@@ -291,11 +291,11 @@ complexity_routing:
 
 # Agent 默认模型映射
 agent_models:
-  Coordinator: doubao-seed-2.0-pro
-  EngineeringWorker: doubao-seed-2.0-code
-  ReviewerWorker: deepseek-v3.2
-  TestingWorker: doubao-seed-2.0-lite
-  AutoAnalyzer: deepseek-v3.2
+  Coordinator: xiaomimimo/mimo-v2.5-pro
+  EngineeringWorker: xiaomimimo/mimo-v2.5-pro
+  ReviewerWorker: deepseek/deepseek-v4-pro
+  TestingWorker: xiaomimimo/mimo-v2.5
+  AutoAnalyzer: deepseek/deepseek-v4-pro
 '''
 
     def get_phases_for_complexity(self, complexity: str) -> List[PhaseConfig]:

@@ -15,10 +15,10 @@ Usage:
     result = await workflow.run()
 
 Version:
-    v3.4 - 多模型编码系统（8 Soul + 按阶段模型分配 + 状态持久化 + 审批规则）
+    v3.6.1 - 全子代理架构 + MiMo 优先 + Heartbeat 统一巡检（含 running 标记误删 bugfix）
 """
 
-__version__ = "3.4.1"
+__version__ = "3.6.1"
 __all__ = [
     "AutoCodingWorkflow",
     "AutoCodingWorkflowEnhanced",

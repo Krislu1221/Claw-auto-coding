@@ -93,10 +93,10 @@
 
 | 场景 | 模型 |
 |------|------|
-| 核心编码 | `volcengine-plan/doubao-seed-2.0-code` |
-| 前端编码 | `volcengine-plan/doubao-seed-2.0-code` |
-| 架构设计 | `volcengine-plan/doubao-seed-2.0-pro` |
-| 代码优化 | `volcengine-plan/glm-5.1` |
+| 核心编码 | `xiaomimimo/mimo-v2.5-pro` |
+| 前端编码 | `xiaomimimo/mimo-v2.5-pro` |
+| 架构设计 | `xiaomimimo/mimo-v2.5-pro` |
+| 代码优化 | `deepseek/deepseek-v4-pro` |
 
 ## 注意事项
 
