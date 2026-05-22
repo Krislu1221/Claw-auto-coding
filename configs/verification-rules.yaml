@@ -1,0 +1,255 @@
+# verification-rules.yaml
+# Per-Skill Verification 三级制 — 每个技能的必检/抽检/免检清单
+# 设计参考: design.md §5
+# 版本: v1.0.0 | 日期: 2026-05-22 | 作者: 虾软 🦐
+
+version: "1.0.0"
+
+verification:
+
+  # ── Step 1: 设计 ──
+  grill-with-docs:
+    mandatory:
+      - id: "ctx-read"
+        desc: "CONTEXT.md 已读取（若存在）"
+        check: "file_read"
+      - id: "questions-complete"
+        desc: "所有追问已回答（决策树走完）"
+        check: "manual"
+      - id: "scope-defined"
+        desc: "范围明确：做什么 + 不做什么均已列出"
+        check: "manual"
+      - id: "api-defined"
+        desc: "接口定义完整：输入/输出/错误均已明确"
+        check: "manual"
+      - id: "acceptance-defined"
+        desc: "验收标准可量化、可执行"
+        check: "manual"
+    spot_check:
+      - id: "adr-checked"
+        desc: "ADR 创建条件已检查（三条件：不可逆+令人惊讶+真实权衡）"
+        check: "manual"
+      - id: "context-updated"
+        desc: "CONTEXT.md 已更新（新术语已写入）"
+        check: "file_diff"
+      - id: "alternatives-compared"
+        desc: "技术方案有备选方案对比"
+        check: "manual"
+    exempt:
+      - "文档格式"
+      - "用词风格"
+      - "示例代码细节"
+
+  # ── Step 2: 分解 ──
+  decomposition:
+    mandatory:
+      - id: "granularity-ok"
+        desc: "任务粒度合理：每个子任务 ≤1 个文件"
+        check: "manual"
+      - id: "dag-valid"
+        desc: "依赖关系无环（DAG 合法）"
+        check: "dag_check"
+      - id: "done-standards"
+        desc: "每个子任务有明确的 Done 标准"
+        check: "manual"
+      - id: "critical-path"
+        desc: "关键路径已标识"
+        check: "manual"
+    spot_check:
+      - id: "numbering"
+        desc: "子任务编号连续、可追溯"
+        check: "manual"
+      - id: "effort-estimate"
+        desc: "预估工作量合理"
+        check: "manual"
+
+  # ── Step 3: TDD 编码 ──
+  tdd:
+    mandatory:
+      - id: "red-green-cycle"
+        desc: "每个测试对应一个 RED→GREEN 循环"
+        check: "manual"
+      - id: "public-api-only"
+        desc: "测试只使用公开接口（不测实现细节）"
+        check: "manual"
+      - id: "minimal-code"
+        desc: "当前代码为测试所需的最小实现"
+        check: "manual"
+      - id: "no-speculative"
+        desc: "没有添加投机性功能"
+        check: "manual"
+      - id: "all-tests-pass"
+        desc: "所有测试通过"
+        check: "test_run"
+    spot_check:
+      - id: "vertical-slice"
+        desc: "垂直切片（非水平：没把所有测试提前写完）"
+        check: "manual"
+      - id: "test-naming"
+        desc: "测试命名描述行为而非实现"
+        check: "manual"
+
+  # ── Step 4: 测试 ──
+  testing:
+    mandatory:
+      - id: "happy-path"
+        desc: "正常路径测试通过"
+        check: "test_run"
+      - id: "edge-cases"
+        desc: "边界条件覆盖（空值、极值、边界值）"
+        check: "manual"
+      - id: "error-paths"
+        desc: "错误路径测试通过"
+        check: "test_run"
+      - id: "no-security-holes"
+        desc: "无安全漏洞（SQL注入/XSS/未验证输入）"
+        check: "security_scan"
+      - id: "no-regression"
+        desc: "回归测试全部通过（无新失败）"
+        check: "test_run"
+    spot_check:
+      - id: "test-time"
+        desc: "测试耗时未翻倍"
+        check: "metric_compare"
+      - id: "coverage"
+        desc: "覆盖率无明显下降"
+        check: "metric_compare"
+      - id: "independent"
+        desc: "测试可独立运行（无顺序依赖）"
+        check: "test_isolation"
+
+  # ── Step 5: 反思 (code-review + zoom-out) ──
+  code-review:
+    mandatory:
+      - id: "zoom-out-done"
+        desc: "zoom-out 分析已完成（系统位置、交互模块、调用者、依赖）"
+        check: "manual"
+      - id: "scorecard-ran"
+        desc: "Risk Scorecard 量化检测已运行"
+        check: "scorecard_run"
+      - id: "blockers-resolved"
+        desc: "🔴 阻塞项已全部解决"
+        check: "scorecard_check"
+      - id: "scorecard-report"
+        desc: "Scorecard Report 已写入日志"
+        check: "file_exists"
+    spot_check:
+      - id: "warnings-planned"
+        desc: "🟡 警告项有处理计划（接受/修复/推迟）"
+        check: "manual"
+      - id: "no-over-critique"
+        desc: "没有过度批评（需求明确要求的做法被尊重）"
+        check: "manual"
+      - id: "cross-module"
+        desc: "跨模块问题已识别"
+        check: "manual"
+
+  # ── Step 6: 优化 ──
+  optimize:
+    mandatory:
+      - id: "tests-still-pass"
+        desc: "测试全部通过（重构后）"
+        check: "test_run"
+      - id: "behavior-unchanged"
+        desc: "功能行为无变化"
+        check: "manual"
+      - id: "no-extra-features"
+        desc: "未被要求的功能没有被添加"
+        check: "manual"
+    spot_check:
+      - id: "lines-reduced"
+        desc: "代码行数减少（或持平 + 可读性提升）"
+        check: "metric_compare"
+      - id: "perf-no-regression"
+        desc: "性能关键路径无退化"
+        check: "benchmark"
+      - id: "traceable"
+        desc: "重构理由可追溯（关联到具体审查意见）"
+        check: "manual"
+
+  # ── Step 7: 验证 ──
+  verification:
+    mandatory:
+      - id: "all-mandatory-passed"
+        desc: "所有阶段必检项全部通过"
+        check: "cross_stage_check"
+      - id: "all-blockers-resolved"
+        desc: "所有 🔴 阻塞项已解决"
+        check: "cross_stage_check"
+      - id: "acceptance-met"
+        desc: "验收标准全部满足"
+        check: "manual"
+      - id: "context-final"
+        desc: "CONTEXT.md 最终版已确认"
+        check: "file_read"
+      - id: "state-correct"
+        desc: ".auto-coding/state.json 状态正确"
+        check: "json_validate"
+    spot_check:
+      - id: "warnings-summary"
+        desc: "🟡 警告项汇总（数量、分布、处理状态）"
+        check: "manual"
+      - id: "deliverables-list"
+        desc: "交付物清单完整"
+        check: "manual"
+
+  # ── 调试子流程 ──
+  diagnose:
+    mandatory:
+      - id: "feedback-loop"
+        desc: "反馈循环已建立（bug 可复现）"
+        check: "manual"
+      - id: "hypotheses-listed"
+        desc: "假设已列出并排优先级"
+        check: "manual"
+      - id: "regression-test-written"
+        desc: "回归测试已编写（修复前）"
+        check: "file_exists"
+      - id: "debug-code-cleaned"
+        desc: "调试代码已清理（grep [DEBUG-xxx] 无残留）"
+        check: "grep_absence"
+      - id: "root-cause-documented"
+        desc: "根因已明确记录"
+        check: "file_exists"
+    spot_check:
+      - id: "time-limit"
+        desc: "调试耗时 < 5 分钟（否则应报告）"
+        check: "time_check"
+      - id: "retro-output"
+        desc: "复盘结论已输出"
+        check: "file_exists"
+
+  # ── Step 8.5: 架构改进 ──
+  improve-architecture:
+    mandatory:
+      - id: "deep-coupling-listed"
+        desc: "深层耦合候选已列出（编号、文件、问题、方案、收益）"
+        check: "manual"
+      - id: "delete-test-done"
+        desc: "删除测试已执行（至少 1 个模块）"
+        check: "test_run"
+      - id: "context-term-naming"
+        desc: "用 CONTEXT.md 术语命名"
+        check: "manual"
+    spot_check:
+      - id: "no-adr-dup"
+        desc: "未重复 ADR 已决定事项"
+        check: "manual"
+      - id: "prioritized"
+        desc: "建议有优先级排序"
+        check: "manual"
+
+# ── 元规则 ──
+meta:
+  mandatory_max: 5
+  spot_check_max: 3
+  spot_check_count: 3                          # 每次随机抽检 N 项（从 spot_check 列表中随机选）
+  severity:
+    mandatory_fail: "block"                    # 🔴 不通过阻塞，不准进入下一阶段
+    spot_check_fail: "warn"                    # 🟡 不通过警告，记录但不阻塞
+  symbols:
+    mandatory: "🔴"
+    spot_check: "🟡"
+    exempt: "💭"
+    pass: "✅"
+    fail: "❌"

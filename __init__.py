@@ -15,10 +15,10 @@ Usage:
     result = await workflow.run()
 
 Version:
-    v3.6.1 - 全子代理架构 + MiMo 优先 + Heartbeat 统一巡检（含 running 标记误删 bugfix）
+    v3.7.0-discipline - 工程纪律系统（SkillInjector + ScorecardEngine + 审计追踪 + 子 Agent 问责）
 """
 
-__version__ = "3.6.1"
+__version__ = "3.7.0-discipline"
 __all__ = [
     "AutoCodingWorkflow",
     "AutoCodingWorkflowEnhanced",

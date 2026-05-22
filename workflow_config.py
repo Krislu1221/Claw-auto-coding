@@ -32,6 +32,8 @@ class PhaseConfig:
     timeout_seconds: int = 300
     # 重试次数
     retry_count: int = 3
+    # v3.6.2: 子 Agent 失败时的 fallback 模型
+    fallback_model: Optional[str] = None
 
 
 @dataclass

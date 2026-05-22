@@ -1,0 +1,201 @@
+╔══════════════════════════════════════════════╗
+║  📊 Risk Scorecard Report — CODE REVIEW       ║
+║  v3.7-discipline · 2026-05-22 · 🦐 虾软      ║
+╚══════════════════════════════════════════════╝
+
+────────────────────────────────────────────────
+📋 ZOOM-OUT — 改动范围理解
+────────────────────────────────────────────────
+
+v3.7-discipline 是把 auto-coding 的技能系统从 SKILL.md 单体（~582行）拆为：
+  • 精简主控 SKILL.md（132 行，≤150 ✅）
+  • 12 个独立技能文件（skills/*.skill.md，共 ~1488 行）
+  • 技能注入器（skill_injector.py，222 行）
+  • Scorecard 检测引擎（scorecard_engine.py，382 行)
+  • 集成修改（workflow_enhanced.py 的 v3.7 部分 ~80 行）
+  • 2 个新配置文件（scorecard.yaml + verification-rules.yaml）
+
+核心设计：
+  • discipline_enabled=False（默认关闭，零影响）✅
+  • Feature flag 控制：discipline_enabled=True 时启用 SkillInjector + ScorecardEngine
+  • 全子代理架构（SKILL.md 中描述，但实现仍用 EngineeringWorker in-process 调用）
+  • 8 步循环流程保留，注入 ≤2 个技能文件/阶段
+  • Reviewer 否决权 + 复杂度自动分级保留
+
+与 v3.6.1 边界：
+  • 新增：skill_injector.py, scorecard_engine.py, skills/*, configs/*
+  • 修改：SKILL.md (582→132), workflow_enhanced.py（添加 ~80 行 v3.7 代码）
+  • 未改：state_manager.py, workers/*, 其他现有文件
+
+────────────────────────────────────────────────
+📊 RISK SCORECARD 量化检测
+────────────────────────────────────────────────
+
+  📏 modified_file_count: 6 个文件有实质性变更
+     (SKILL.md, skill_injector.py, scorecard_engine.py, 
+      workflow_enhanced.py, scorecard.yaml, verification-rules.yaml)
+  ➕ 添加新功能: 是（技能注入系统 + Scorecard 检测引擎）
+  📉 SKILL.md: 582 → 132 行 (77% 缩减, ≤150 ✅)
+  📈 新增代码: ~1500+ 行（含 skill 文件）
+
+────────────────────────────────────────────────
+🔍 逐文件审查发现
+────────────────────────────────────────────────
+
+⚡ 检测到 3 个 🔴 阻塞项 + 5 个 🟡 警告 + 4 个 💭 建议
+
+
+═══════════════════════════════════════════════════
+🔴 阻塞项 (3) — 必须修复才能交付
+═══════════════════════════════════════════════════
+
+🔴 [BLOCK-1] __init__.py 版本号不一致
+  文件: __init__.py:18
+  信号: __version__ = "3.6.2" 但 SKILL.md 声明 v3.7-discipline
+  阈值: 版本号必须与 SKILL.md 一致
+  修复: 改 __version__ = "3.7.0"，docstring 更新为 v3.7-discipline
+
+🔴 [BLOCK-2] workflow_enhanced.py: 3 个方法引用未定义变量 phase.model
+  文件: workflow_enhanced.py
+  方法: _check_architecture_health() L468, _run_debug_subroutine() L633, _grill_with_docs() L677
+  问题: 这三个方法内部使用 `phase.model` 但 `phase` 不是参数也不在作用域内
+  影响: 调用任一方法 → NameError → 阶段崩溃
+  触发条件: _grill_with_docs() 在 _phase_design() 中被无条件调用（非 v3.7 新增，
+           但属于本次审查范围）
+  修复: 
+    (a) 将 phase 作为参数传入这三个方法，或
+    (b) 使用 self.model_selector 获取默认模型替代
+
+🔴 [BLOCK-3] risk-scorecard.skill.md 规则数与 scorecard.yaml 不一致
+  文件: skills/risk-scorecard.skill.md + configs/scorecard.yaml
+  问题: 
+    • skill 文件标题声明 "共11条规则"
+    • YAML 实际有 12 条（5 coding + 2 testing + 3 review + 2 general）
+    • skill 文件 review_discipline 只列了 2 条（审查前 zoom-out + 安全审查）
+      缺少第 3 条："不改动需求明确的做法"（over_critique_detected）
+    • 另外，skill 文件 "不添加未被要求的功能" 使用 signal=`new_feature_count`，
+      YAML 使用 signal=`extra_features_added` → 信号名不一致
+  影响: Agent 读取 skill 文件的规则描述会产生错误的预期（少一条规则 + 信号名不同）
+  修复: 
+    (a) skill 文件标题改为 "共12条规则"
+    (b) 补回第 3 条 review 规则的描述
+    (c) 统一信号名：skill 文件的 `new_feature_count` → `extra_features_added`
+
+═══════════════════════════════════════════════════
+🟡 警告项 (5) — 建议修复，不阻塞
+═══════════════════════════════════════════════════
+
+🟡 [WARN-1] _collect_signals() 信号收集不完整
+  文件: workflow_enhanced.py _collect_signals()
+  问题: coding 阶段只收集了 modified_file_count 和 extra_features_added，
+        但 scorecard.yaml 的 coding section 还引用了：
+        • testing_phase_executed, new_code_without_test, abstraction_layers_added
+        • tests_passed_after_change, feedback_loop_established, debug_attempts
+  影响: 这些信号缺失时，evaluate_threshold() 因 NameError → 返回 False，
+        导致对应 check 被静默跳过（silent pass）
+  建议: _collect_signals() 补全所有需要的信号，或 evaluate_threshold() 
+        对缺失信号显式报 UNKNOWN 而非默认 pass
+
+🟡 [WARN-2] PHASE_SKILL_MAP 缺少 "design" 阶段的 grill-with-docs 严格检查
+  文件: skill_injector.py
+  问题: design 阶段映射了 1 个技能（grill-with-docs），符合 ≤2 限制。
+        但 _run_phase() 仍然调用 _grill_with_docs() 作为额外的 LLM 调用，
+        没有通过 skill_injector 注入。技能注入和直接调用两套机制并存。
+  建议: 文档说明 design 阶段的两层机制（注入 + 独立调用），或统一为注入方式
+
+🟡 [WARN-3] workflow_enhanced.py auto_coding_workflow 导入可能静默失败
+  文件: workflow_enhanced.py:32-35
+  问题: try/except ImportError 仅在 except 设置 BASE_CLASS=object 并 print 警告，
+        BASE_CLASS 实际上未被使用（AutoCodingWorkflowEnhanced 不继承自它）
+  建议: 移除无用的 try/except 或让 AutoCodingWorkflowEnhanced 实际继承 BASE_CLASS
+
+🟡 [WARN-4] verification-rules.yaml 是否有对应的验证执行代码？
+  文件: configs/verification-rules.yaml
+  问题: 定义了 8 个技能的 mandatory/spot_check/exempt 清单（~200 行），
+        但在 workflow_enhanced.py 中没有看到任何引用 verification-rules.yaml 的代码。
+        ScorecardEngine 只读取 scorecard.yaml。
+  影响: 验证规则定义了但从未执行 → 虚假的质量保障感
+  建议: 确认是否有计划实现 verification rule 执行器，或标注为 "待实现"
+
+🟡 [WARN-5] skill_injector.py _validate_phase_map() 检查了文件存在但只 warn
+  文件: skill_injector.py:210-221
+  问题: 构造时校验文件存在性但只 log.warning，不阻止继续使用。
+        如果技能文件在运行时被删除，第一个阶段调用时才会发现。
+  影响: 低影响，降级策略合理
+
+═══════════════════════════════════════════════════
+💭 建议项 (4) — 可选的改进
+═══════════════════════════════════════════════════
+
+💭 [SUG-1] SKILL.md 声称 "全子代理架构" 但实现仍用 EngineeringWorker
+  实际: workflow_enhanced.py 中的 _phase_xxx 方法仍然用 EngineeringWorker.execute()
+        做 in-process LLM 调用，不是开真正的子 agent
+  建议: 明确文档或后续版本实现真正的 sessions_yield 子代理
+
+💭 [SUG-2] 技能文件结构一致性
+  12 个 skill 文件都遵循统一结构（Overview→When→Process→Scorecard→RedFlags→Verification），
+  一致性很好 ✅
+  唯一差异: discipline-meta.skill.md 的 verification 部分省略了（它是元规则不是技能）
+
+💭 [SUG-3] scorecard.yaml 和 risk-scorecard.skill.md 的维护负担
+  两处都需要维护规则定义，容易产生 WARN-3 类的不一致。
+  建议: 考虑单一数据源（如 YAML），skill 文件从 YAML 自动生成规则描述
+
+💭 [SUG-4] CoolDownManager 的内存态不持久化
+  冷却窗口数据只在内存中（CoolDownManager.failure_history），进程重启后丢失。
+  对于长时间运行的工作流，重启后可能丢失冷却状态。
+  建议: 考虑将 failure_history 序列化到 state.json
+
+═══════════════════════════════════════════════════
+📊 检测结果汇总
+═══════════════════════════════════════════════════
+
+  ──────────────────────────────────────────
+  📋 共 12 条检查项
+  🔴 阻塞 3  | 🟡 警告 5  | 💭 建议 4 | ✅ 通过 0
+  ⛔ 阻塞状态: 是 ⛔ — BLOCK，不可交付
+  ──────────────────────────────────────────
+
+详细分类：
+  • 版本号不一致: 1 🔴 (__init__.py v3.6.2 vs SKILL.md v3.7)
+  • 运行时 bug: 1 🔴 (3 methods × undefined phase.model)
+  • 文档/配置不一致: 1 🔴 (skill vs YAML 规则数、信号名)
+  • 信号收集不完整: 1 🟡
+  • 死代码/冗余导入: 1 🟡
+  • 未实现的验证: 1 🟡
+  • 设计问题: 3 🟡💭
+
+═══════════════════════════════════════════════════
+✅ 正面发现
+═══════════════════════════════════════════════════
+
+  ✅ SKILL.md 132 行，远低于 150 行上限，结构清晰
+  ✅ 12 个技能文件统一遵循 6 段式结构（Overview/When/Process/Scorecard/RedFlags/Verification）
+  ✅ skill_injector.py 设计完善：缓存机制、降级策略、断言检查、token 估算
+  ✅ scorecard_engine.py 47/47 自测通过，阈值求值器覆盖 12 种表达式组合
+  ✅ CoolDownManager 冷却窗口逻辑正确（第 3 次静默，不同于类不干扰）
+  ✅ discipline_enabled=False 默认关闭 → 对现有流程零影响
+  ✅ 8 步流程完好保留，Reviewer 否决权机制未破坏
+  ✅ 全局技能（risk-scorecard + discipline-meta）首次注入附带，后续缓存
+  ✅ scorecard.yaml 元数据 self-consistent（total_entries=12 vs 实际=12）
+  ✅ verification-rules.yaml 三级制设计合理（mandatory≤5 / spot_check≤3 / exempt）
+
+═══════════════════════════════════════════════════
+🎯 最终判定: 🔴 BLOCK
+═══════════════════════════════════════════════════
+
+3 个 🔴 阻塞项必须在交付前修复：
+
+1. __init__.py 版本号改为 v3.7.0（或 SKILL.md 降级为 v3.6.2）
+2. 修复 _check_architecture_health / _run_debug_subroutine / _grill_with_docs 中
+   引用未定义变量 phase.model 的 NameError bug
+3. 修复 risk-scorecard.skill.md 与 scorecard.yaml 的规则数/信号名不一致
+
+修复以上 3 项后，可以交付。
+🟡 警告项建议在下个版本修复。
+
+═══════════════════════════════════════════════════
+审查者: 🦐 虾软（Owner Reviewer）
+时间: 2026-05-22 13:44 GMT+8
+工具: AST 静态分析 + 手动逐文件审查 + Scorecard 自测验证
+═══════════════════════════════════════════════════

@@ -1,0 +1,141 @@
+# scorecard.yaml
+version: "1.0.0"
+
+# 编码阶段
+coding:
+  - discipline: "不跳过测试"
+    rationalization:
+      - "这个太简单了不需要测试"
+      - "测试可以后面补"
+      - "我一眼就能看出是不是对的"
+    signal: "testing_phase_executed"
+    threshold: "testing_phase_executed == false"
+    action: "block"
+    level: "🔴"
+    counter: "简单逻辑也有边界情况；后面补 = 永远不补；人眼验证不可靠"
+
+  - discipline: "手术刀式修改"
+    rationalization:
+      - "既然要改这个文件，顺便重构一下"
+      - "这些代码风格不统一，一并改了"
+      - "就顺手格式化一下"
+    signal: "modified_file_count"
+    threshold: "modified_file_count > 5"
+    action: "block"
+    level: "🔴"
+    counter: "每次顺手都是引入 bug 的机会；重构是独立任务不是搭车行为"
+
+  - discipline: "代码必须有测试覆盖"
+    rationalization:
+      - "单元测试没用，集成测试才重要"
+      - "覆盖率数字没意义"
+    signal: "new_code_without_test"
+    threshold: "new_code_without_test > 200"
+    action: "block"
+    level: "🔴"
+    counter: "没有单元测试的代码 = 没有安全网的杂技；200 行无测试是危险信号"
+
+  - discipline: "不添加未被要求的功能"
+    rationalization:
+      - "顺便加个配置项，万一要用呢"
+      - "这个抽象以后会省时间"
+      - "多写个工具函数又没坏处"
+    signal: "extra_features_added"
+    threshold: "extra_features_added > 0"
+    action: "warn"
+    level: "🟡"
+    counter: "YAGNI — 你现在不需要它；每次添加都是未来的维护债"
+
+  - discipline: "不制造过度抽象"
+    rationalization:
+      - "提取个接口以后方便扩展"
+      - "加个策略模式代码更优雅"
+    signal: "abstraction_layers_added"
+    threshold: "abstraction_layers_added > 1"
+    action: "warn"
+    level: "🟡"
+    counter: "一个实现不需要接口；等第二个实现出现时再抽象（Rule of Three）"
+
+# 测试阶段
+testing:
+  - discipline: "不测实现细节"
+    rationalization:
+      - "mock 一下内部方法更方便"
+      - "得验证这个 private 方法被调用了"
+    signal: "test_touches_internal_api"
+    threshold: "test_touches_internal_api == true"
+    action: "block"
+    level: "🔴"
+    counter: "测试只验证 public API；测实现细节的测试在重构时全废"
+
+  - discipline: "测试必须先失败再通过"
+    rationalization:
+      - "我相信这测试会通过，不用先跑"
+      - "RED 阶段浪费时间"
+    signal: "test_was_red_before_green"
+    threshold: "test_was_red_before_green == false"
+    action: "warn"
+    level: "🟡"
+    counter: "没见过 RED 的测试可能测错了东西"
+
+# 审查阶段
+review:
+  - discipline: "审查覆盖安全"
+    rationalization:
+      - "安全问题后面再说"
+      - "这个输入肯定是安全的"
+    signal: "security_checks_passed"
+    threshold: "security_checks_passed == false"
+    action: "block"
+    level: "🔴"
+    counter: "安全不能后补；任何用户输入都必须验证"
+
+  - discipline: "审查前先 zoom-out"
+    rationalization:
+      - "这段代码我熟，不用看上下文"
+      - "就看 diff 够了"
+    signal: "zoom_out_executed"
+    threshold: "zoom_out_executed == false and modified_file_count > 3"
+    action: "warn"
+    level: "🟡"
+    counter: "不理解的代码不能有效审查"
+
+  - discipline: "不改动需求明确的做法"
+    rationalization:
+      - "这个写法不够优雅，改一下"
+      - "应该用更好的模式"
+    signal: "over_critique_detected"
+    threshold: "over_critique_detected == true"
+    action: "warn"
+    level: "🟡"
+    counter: "审查边界：需求明确要求的做法优先于极简主义"
+
+# 通用纪律
+general:
+  - discipline: "不提交未验证的代码"
+    rationalization:
+      - "改了才 3 行，不用跑测试"
+      - "之前都通过的，这次肯定也没问题"
+    signal: "tests_passed_after_change"
+    threshold: "tests_passed_after_change == false"
+    action: "block"
+    level: "🔴"
+    counter: "3 行也能引入 bug；测试的存在就是为了每次验证"
+
+  - discipline: "调试前先建反馈循环"
+    rationalization:
+      - "我大概知道问题在哪，直接改"
+      - "打日志太慢了"
+    signal: "feedback_loop_established"
+    threshold: "feedback_loop_established == false and debug_attempts > 0"
+    action: "block"
+    level: "🔴"
+    counter: "不建循环就猜 = 瞎蒙；可复现的 bug > 猜测的 bug"
+
+meta:
+  total_entries: 12
+  blocking_entries: 7
+  warning_entries: 5
+  cooling:  # 反馈冷却窗口
+    same_failure_max_per_24h: 2
+    silent_on_3rd: true

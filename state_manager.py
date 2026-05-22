@@ -31,7 +31,7 @@ class TaskState:
 @dataclass
 class WorkflowState:
     """工作流全局状态"""
-    version: str = "3.6.1"
+    version: str = "3.6.2"
     task_id: str = ""
     requirements: str = ""
     current_phase: str = "idle"         # idle/design/decomposition/coding/testing/reflection/optimization/verification/output
@@ -45,6 +45,13 @@ class WorkflowState:
     updated_at: str = ""
     approval_queue: List[Dict[str, Any]] = field(default_factory=list)
     agent_usage: Dict[str, Any] = field(default_factory=dict)
+    # v3.6.2: Verifier 硬否决追踪
+    veto_retry_count: int = 0
+    veto_retry_max: int = 3
+    veto_retry_history: List[Dict[str, Any]] = field(default_factory=list)
+    # v3.6.2: 子 Agent recovery 信息
+    failed_agents: List[Dict[str, Any]] = field(default_factory=list)
+    agent_recovery_attempts: int = 0
 
 
 class StateManager:
@@ -234,6 +241,13 @@ class StateManager:
             "updated_at": state.updated_at,
             "approval_queue": state.approval_queue,
             "agent_usage": state.agent_usage,
+            # v3.6.2: Verifier 否决追踪
+            "veto_retry_count": state.veto_retry_count,
+            "veto_retry_max": state.veto_retry_max,
+            "veto_retry_history": state.veto_retry_history,
+            # v3.6.2: 子 Agent recovery
+            "failed_agents": state.failed_agents,
+            "agent_recovery_attempts": state.agent_recovery_attempts,
         }
     
     def _dict_to_state(self, data: Dict[str, Any]) -> WorkflowState:
@@ -253,6 +267,13 @@ class StateManager:
             updated_at=data.get("updated_at", ""),
             approval_queue=data.get("approval_queue", []),
             agent_usage=data.get("agent_usage", {}),
+            # v3.6.2: Verifier 否决追踪
+            veto_retry_count=data.get("veto_retry_count", 0),
+            veto_retry_max=data.get("veto_retry_max", 3),
+            veto_retry_history=data.get("veto_retry_history", []),
+            # v3.6.2: 子 Agent recovery
+            failed_agents=data.get("failed_agents", []),
+            agent_recovery_attempts=data.get("agent_recovery_attempts", 0),
         )
 
     # ==================== 状态同步标记文件管理（双轨机制）====================
@@ -347,5 +368,56 @@ class StateManager:
         with open(mark_file, "w", encoding="utf-8") as f:
             json.dump(mark_data, f, ensure_ascii=False, indent=2)
         print(f"⏸️  已写审批标记：{mark_file.name}")
+
+    # ==================== v3.6.2: 子 Agent recovery 支持 ====================
+
+    def record_agent_failure(self, state: WorkflowState, agent_id: str, phase: str, error: str):
+        """
+        记录子 Agent 失败，供 recovery 决策使用
+        
+        Args:
+            agent_id: 子 Agent 标识
+            phase: 失败时的阶段ID
+            error: 错误描述
+        """
+        failure = {
+            "agent": agent_id,
+            "phase": phase,
+            "error": error[:200],
+            "failed_at": datetime.now().isoformat(),
+            "recovery_attempt": state.agent_recovery_attempts,
+        }
+        state.failed_agents.append(failure)
+        state.agent_recovery_attempts += 1
+        self._save(state)
+        print(f"   📝 子 Agent 失败已记录: {agent_id} ({phase})")
+
+    def has_recovery_budget(self, state: WorkflowState) -> bool:
+        """检查是否还有 recovery 预算（最多 3 次全局 recovery）"""
+        return state.agent_recovery_attempts < 3
+
+    def get_recovery_action(self, state: WorkflowState, phase: str) -> str:
+        """
+        根据失败记录决定 recovery 策略
+        
+        Returns:
+            'retry': 重试（同模型同 Worker）
+            'fallback': 降级（换 fallback 模型）
+            'escalate': 升级给人类审批
+        """
+        phase_failures = [f for f in state.failed_agents if f.get('phase') == phase]
+        fail_count = len(phase_failures)
+        
+        if fail_count == 0:
+            return 'retry'
+        elif fail_count <= 2:
+            return 'fallback'
+        else:
+            return 'escalate'
+
+    def clear_phase_failures(self, state: WorkflowState, phase: str):
+        """阶段成功后清理该阶段的失败记录"""
+        state.failed_agents = [f for f in state.failed_agents if f.get('phase') != phase]
+        self._save(state)
 
 

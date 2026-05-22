@@ -101,6 +101,19 @@ class AutoCodingWorkflowEnhanced:
         # 4. 飞书通知器
         self.notifier = FeishuNotifier(self.state_manager.state_dir)
 
+        # === v3.7: 工程纪律组件（可选，feature flag 控制） ===
+        self.skill_injector = None
+        self.scorecard_engine = None
+        self.task_profiler = None
+        if self.constraints.get("discipline_enabled", False):
+            from skill_injector import SkillInjector
+            from scorecard_engine import ScorecardEngine
+            self.skill_injector = SkillInjector()
+            self.scorecard_engine = ScorecardEngine()
+            from task_profiler import TaskProfiler
+            self.task_profiler = TaskProfiler(str(self.project_dir))
+            print(f"🔧 工程纪律模式已启用（SkillInjector + ScorecardEngine + TaskProfiler）")
+
         # === 运行时状态 ===
         self.current_phase = "idle"
         self.completed_phases: List[str] = []
@@ -308,6 +321,47 @@ class AutoCodingWorkflowEnhanced:
                     self._save_final_state(f"approval_required:{approval_id}")
                     return self.result
 
+                # v3.7: Scorecard 检测 + Per-Skill Verification
+                if self.scorecard_engine:
+                    try:
+                        signals = self._collect_signals(phase_id)
+                        report = self.scorecard_engine.detect(phase_id, signals)
+                        self._log_scorecard(report)
+                        if self.scorecard_engine.is_blocking(report):
+                            print(f"\n🔴 Scorecard 阻塞: {phase_id}")
+                            print(f"   {report.summary.get('blocked', 0)} 阻塞项, {report.summary.get('warned', 0)} 警告")
+                            self._save_final_state(f"blocked:scorecard:{phase_id}")
+                            return {"status": "blocked", "phase": phase_id, "report": report}
+                    except Exception as e:
+                        print(f"   ⚠️  Scorecard 检测失败（降级跳过）: {e}")
+
+                # v3.7: Task Profiler — 记录本次子 agent 执行数据（持续校准超时窗口）
+                if self.task_profiler and self.result:
+                    try:
+                        from task_profiler import classify_task
+                        task_data = self.result.get("task_progress", {}).get(phase_id, {})
+                        elapsed = task_data.get("elapsed_seconds", 0) / 60
+                        token_count = task_data.get("token_count", 0)
+                        file_count = task_data.get("file_count", 0)
+                        estimated = task_data.get("estimated_minutes", 0)
+                        category = task_data.get("category") or classify_task(
+                            task_data.get("prompt", ""), file_count
+                        )
+                        status = "timeout" if task_data.get("timed_out") else "completed"
+                        self.task_profiler.record(
+                            task_id=f"{self.state.task_id}:{phase_id}",
+                            category=category,
+                            model=phase_config.model,
+                            phase=phase_id,
+                            estimated_minutes=estimated,
+                            actual_minutes=elapsed,
+                            token_count=token_count,
+                            file_count=file_count,
+                            status=status,
+                        )
+                    except Exception as e:
+                        pass  # profiler 失败不影响主流程
+
                 # 标记阶段完成
                 self.completed_phases.append(phase_id)
                 self.state_manager.save_phase(self.state, phase_id, {
@@ -315,12 +369,46 @@ class AutoCodingWorkflowEnhanced:
                     "model": phase_config.model,
                     "completed_at": datetime.now().isoformat(),
                 })
+                # [Bugfix] 阶段成功后清零该阶段的失败记录，保证 recovery 预算按阶段独立
+                self.state_manager.clear_phase_failures(self.state, phase_id)
                 self._update_progress()
                 print(f"\n✅ 阶段 {phase_id} 完成")
 
-                # v3.3: Reviewer 否决权 — 检查是否触发重写
+                # v3.6.2: Verifier 硬否决逻辑（带重试上限 + 退出机制）
                 if phase_id == "review" and self.result.get("review_veto"):
-                    print(f"\n🔄 Reviewer 否决，回到 coding 重写")
+                    # 递增重试次数
+                    self.state.veto_retry_count += 1
+                    veto_entry = {
+                        "count": self.state.veto_retry_count,
+                        "max": self.state.veto_retry_max,
+                        "issues": len(self.result.get("review_issues", [])),
+                        "veto_at": datetime.now().isoformat(),
+                    }
+                    self.state.veto_retry_history.append(veto_entry)
+                    # 立即持久化否决计数
+                    self.state_manager._save(self.state)
+                    
+                    if self.state.veto_retry_count >= self.state.veto_retry_max:
+                        # 超过重试上限 → 升级给人类
+                        print(f"\n⚠️  Reviewer 否决已达上限（{self.state.veto_retry_max}/{self.state.veto_retry_max}）")
+                        print(f"   升级给人类决策：是否继续重写？")
+                        approval_id = self.state_manager.push_approval(
+                            self.state,
+                            operation=f"veto_escalation:{phase_id}",
+                            details={
+                                "reason": f"Reviewer 连续否决 {self.state.veto_retry_count} 次，超出上限",
+                                "veto_history": self.state.veto_retry_history,
+                                "last_veto_feedback": self.context.get("veto_feedback", "")[:300],
+                            }
+                        )
+                        self.state_manager.mark_approval_required(
+                            self.state, approval_id,
+                            f"Reviewer 否决升级：{self.state.veto_retry_count} 次"
+                        )
+                        self._save_final_state(f"approval_required:{approval_id}")
+                        return self.result
+                    
+                    print(f"\n🔄 Reviewer 否决（{self.state.veto_retry_count}/{self.state.veto_retry_max}），回到 coding 重写")
                     if "coding" in self.completed_phases:
                         self.completed_phases.remove("coding")
                     # 将 veto 反馈加入 context 供 coding 阶段使用
@@ -337,8 +425,67 @@ class AutoCodingWorkflowEnhanced:
             except Exception as e:
                 print(f"\n❌ 阶段 {phase_id} 失败：{e}")
                 self.state_manager.save_progress(self.state, current_phase=f"failed:{phase_id}")
-                self._save_final_state("failed")
-                raise
+                
+                # v3.6.2: 子 Agent 断线恢复
+                error_str = str(e)
+                self.state_manager.record_agent_failure(
+                    self.state,
+                    agent_id=phase_config.agent,
+                    phase=phase_id,
+                    error=error_str
+                )
+                
+                if self.state_manager.has_recovery_budget(self.state):
+                    recovery_action = self.state_manager.get_recovery_action(self.state, phase_id)
+                    
+                    if recovery_action == 'retry':
+                        print(f"   🔄 Recovery: 重试阶段 {phase_id}（同模型重跑）")
+                        # [Bugfix] phase_index +1 在 try 之前已执行，回退一个位置重插
+                        phases_to_run.insert(phase_index - 1, phase_config)
+                        phase_index -= 1
+                        continue
+                    elif recovery_action == 'fallback':
+                        print(f"   🔄 Recovery: 降级重试阶段 {phase_id}（换 fallback 模型）")
+                        # 切换到 fallback 模型
+                        # 优先用 PhaseConfig 定义的 fallback_model，否则用原模型重试
+                        fallback = getattr(phase_config, 'fallback_model', None) or phase_config.model
+                        if fallback and fallback != phase_config.model:
+                            print(f"      模型: {phase_config.model} → {fallback}")
+                            fallback_config = PhaseConfig(
+                                id=phase_id,
+                                name=phase_config.name,
+                                description=phase_config.description,
+                                agent=phase_config.agent,
+                                model=fallback,
+                                gates=phase_config.gates,
+                            )
+                            phases_to_run.insert(phase_index - 1, fallback_config)
+                        else:
+                            phases_to_run.insert(phase_index - 1, phase_config)
+                        phase_index -= 1
+                        continue
+                    elif recovery_action == 'escalate':
+                        print(f"   ⏸️  Recovery: 升级给人类决策")
+                        approval_id = self.state_manager.push_approval(
+                            self.state,
+                            operation=f"agent_failure:{phase_id}",
+                            details={
+                                "reason": f"子 Agent 失败 {self.state.agent_recovery_attempts} 次，需人工决策",
+                                "error": error_str[:300],
+                                "phase": phase_id,
+                                "agent": phase_config.agent,
+                            }
+                        )
+                        self.state_manager.mark_approval_required(
+                            self.state, approval_id,
+                            f"子 Agent 失败升级：{phase_id}"
+                        )
+                        self._save_final_state(f"approval_required:{approval_id}")
+                        return self.result
+                else:
+                    print(f"   ❌ Recovery 预算耗尽（尝试 {self.state.agent_recovery_attempts} 次），任务失败")
+                    self._save_final_state("failed")
+                    raise
 
         # === 工作流完成 ===
         # v3.4: 可选架构健康检查（improve-architecture）
@@ -379,7 +526,7 @@ class AutoCodingWorkflowEnhanced:
         try:
             from workers.engineering_worker import EngineeringWorker
             from workers.base_worker import WorkerTask
-            worker = EngineeringWorker(model_selector=self.model_selector, model_override=phase.model)
+            worker = EngineeringWorker(model_selector=self.model_selector, model_override=None)
             print(f"   🏗️  架构检查中...")
             result = await worker.execute(WorkerTask(
                 id="arch-check", description="架构健康检查", prompt=arch_prompt
@@ -403,6 +550,16 @@ class AutoCodingWorkflowEnhanced:
     async def _run_phase(self, phase_config: PhaseConfig):
         """执行单个阶段"""
         phase_id = phase_config.id
+
+        # v3.7: 技能注入（阶段启动时注入技能内容到 self.context）
+        if self.skill_injector:
+            try:
+                skill_prompt, meta = self.skill_injector.inject_for_phase(phase_id)
+                if skill_prompt:
+                    self.context["_injected_skill_prompt"] = skill_prompt
+                    print(f"   📥 技能注入: {meta.get('skills', [])} (~{meta.get('token_estimate', 0)} tokens)")
+            except Exception as e:
+                print(f"   ⚠️  技能注入失败（降级跳过）: {e}")
 
         if phase_id == "design":
             await self._phase_design(phase_config)
@@ -428,7 +585,7 @@ class AutoCodingWorkflowEnhanced:
         code = self.result.get('code', '')
         
         # v3.4: TDD 垂直切片 — 一次一个测试，红→绿→重构
-        tdd_prompt = (
+        tdd_prompt = self._wrap_prompt(
             f"你是测试工程师。使用 TDD 红-绿-重构循环编写测试。\n\n"
             f"## 待测试代码\n```python\n{code[:3000] if code else '# 暂无代码'}\n```\n\n"
             f"## TDD 规则\n"
@@ -474,7 +631,7 @@ class AutoCodingWorkflowEnhanced:
         code = self.result.get('code', '')
         review = self.context.get('veto_feedback', '') or self.result.get('reflection', '')
         
-        opt_prompt = (
+        opt_prompt = self._wrap_prompt(
             f"你是代码优化工程师。根据审查结果进行深度优化：优雅优先、性能敏感、消除冗余。\n\n"
             f"## 审查反馈\n{review[:2000] if review else '无审查反馈'}\n\n"
             f"## 当前代码\n```python\n{code[:3000] if code else '# 暂无代码'}\n```\n\n"
@@ -532,7 +689,7 @@ class AutoCodingWorkflowEnhanced:
         try:
             from workers.engineering_worker import EngineeringWorker
             from workers.base_worker import WorkerTask
-            worker = EngineeringWorker(model_selector=self.model_selector, model_override=phase.model)
+            worker = EngineeringWorker(model_selector=self.model_selector, model_override=None)
             print(f"   🔍 调试分析中...")
             result = await worker.execute(WorkerTask(
                 id="debug", description="系统化调试", prompt=debug_prompt
@@ -571,7 +728,7 @@ class AutoCodingWorkflowEnhanced:
         try:
             from workers.engineering_worker import EngineeringWorker
             from workers.base_worker import WorkerTask
-            worker = EngineeringWorker(model_selector=self.model_selector, model_override=phase.model)
+            worker = EngineeringWorker(model_selector=self.model_selector, model_override=None)
             print(f"   🔥 Grill-with-docs 需求对齐...")
             result = await worker.execute(WorkerTask(
                 id="grill", description="需求对齐", prompt=grill_prompt
@@ -615,7 +772,7 @@ class AutoCodingWorkflowEnhanced:
             from workers.engineering_worker import EngineeringWorker
             from workers.base_worker import WorkerTask
             worker = EngineeringWorker(model_selector=self.model_selector, model_override=phase.model)
-            design_prompt = f"""分析需求并设计技术方案。
+            design_prompt = self._wrap_prompt(f"""分析需求并设计技术方案。
 
 ## 需求
 {self.requirements}
@@ -637,7 +794,7 @@ src/
 
 ### 关键设计决策
 1. xxx（理由）
-2. xxx（理由）"""
+2. xxx（理由）""")
             print(f"   🚀 调用 {phase.model} 生成设计方案...")
             result = await worker.execute(WorkerTask(
                 id="design", description="技术方案设计", prompt=design_prompt
@@ -661,7 +818,7 @@ src/
             from workers.engineering_worker import EngineeringWorker
             from workers.base_worker import WorkerTask
             worker = EngineeringWorker(model_selector=self.model_selector, model_override=phase.model)
-            decomp_prompt = f"""根据技术方案拆解任务，定义依赖关系。
+            decomp_prompt = self._wrap_prompt(f"""根据技术方案拆解任务，定义依赖关系。
 
 ## 需求
 {self.requirements}
@@ -676,7 +833,7 @@ src/
 | t1 | 核心实现 | xxx | - |
 
 ### 依赖关系
-- t1 → t2 → t3"""
+- t1 → t2 → t3""")
             print(f"   🚀 调用 {phase.model} 做任务拆解...")
             result = await worker.execute(WorkerTask(
                 id="decomp", description="任务拆解", prompt=decomp_prompt
@@ -736,6 +893,7 @@ src/
             if self.context.get("grill"):
                 coding_prompt += f"需求对齐：{self.context['grill'][:500]}\n"
             coding_prompt += "\n请先输出变更影响分析，再输出代码。"
+            coding_prompt = self._wrap_prompt(coding_prompt)
             
             print(f"   🚀 调用 {phase.model} 生成代码...")
             result = await worker.execute(WorkerTask(
@@ -768,7 +926,7 @@ src/
         req = self.requirements
         
         # === v3.4.1: 审查顺序（必须前 2 条通过才能看代码质量） ===
-        review_prompt = (
+        review_prompt = self._wrap_prompt(
             f"你是一位代码审查专家。严格按顺序审查，必须先过第 1、2 条才能看第 3 条。\n\n"
             f"## 审查顺序（违反顺序直接否决）\n"
             f"1. 🔧 契约一致性：阶段ID、配置、接口、字符串是否对齐？有没有漏改关联点？\n"
@@ -850,7 +1008,7 @@ src/
             from workers.base_worker import WorkerTask
             worker = TestingWorker(model_selector=self.model_selector, model_override=phase.model)
             code = self.result.get('code', '')
-            verify_prompt = (
+            verify_prompt = self._wrap_prompt(
                 f"对以下代码进行最终交付验证：功能完整性、边界覆盖、集成正确性。\n\n"
                 f"## 原始需求\n{self.requirements}\n\n"
                 f"## 代码\n```python\n{code[:3000] if code else '# 暂无代码'}\n```\n\n"
@@ -920,6 +1078,15 @@ src/
             return ["src/main.py"]
         return []  # 已有代码时不预检，由 approval gate 在修改后检查
 
+    def _wrap_prompt(self, base_prompt: str) -> str:
+        """包装 prompt，按需追加注入的技能内容。
+        
+        仅当 discipline_enabled 且 _injected_skill_prompt 存在时才追加。
+        """
+        if self.constraints.get("discipline_enabled") and self.context.get("_injected_skill_prompt"):
+            return f"{base_prompt}\n\n## 技能注入\n{self.context['_injected_skill_prompt']}"
+        return base_prompt
+
     def _detect_modified_files(self) -> List[str]:
         """检测已修改的文件（v3.4: 基于状态追踪）"""
         modified = []
@@ -981,6 +1148,64 @@ src/
     def _update_progress(self):
         """更新进度时间"""
         self.last_progress_time = datetime.now()
+
+    def _collect_signals(self, phase: str) -> dict:
+        """从阶段执行结果中收集可观测信号。
+        
+        v3.7: 为 ScorecardEngine 提供阶段质量信号。
+        """
+        signals = {}
+
+        # ── 通用信号 ──
+        code = self.result.get("code", "")
+        if code:
+            signals["modified_file_count"] = 1  # 默认至少修改了主文件
+        else:
+            signals["modified_file_count"] = 0
+
+        # 额外功能检测：比对 requirements 中的关键词密度
+        req_keywords = len(self.requirements.split())
+        code_lines = code.count("\n") if code else 0
+        signals["extra_features_added"] = max(0, code_lines - req_keywords * 3) if code else 0
+
+        # ── 阶段特定信号 ──
+        if phase == "testing":
+            signals["testing_phase_executed"] = bool(
+                self.context.get("test_output") or self.result.get("test_passed") is not None
+            )
+
+        if phase == "reflection":
+            reflection = self.result.get("reflection", "")
+            signals["zoom_out_executed"] = "zoom-out" in str(reflection).lower() or "全局" in str(reflection)
+
+        if phase == "verification":
+            signals["test_passed"] = self.result.get("test_passed", False)
+
+        if phase == "coding":
+            # 代码行数作为修改规模信号
+            signals["modified_file_count"] = max(1, (code.count("\n") // 100) if code else 0)
+            # 额外功能：超过简单需求的代码量
+            signals["extra_features_added"] = (
+                max(0, code.count("\n") - 200) if code and code.count("\n") > 200 else 0
+            )
+
+        return signals
+
+    def _log_scorecard(self, report):
+        """将 ScorecardReport 写入阶段日志文件。
+        
+        v3.7: Scorecard 检测结果持久化到 .auto-coding/logs/。
+        降级策略：写入失败时打印警告，不抛异常。
+        """
+        try:
+            log_dir = Path(self.project_dir) / ".auto-coding" / "logs"
+            log_dir.mkdir(parents=True, exist_ok=True)
+            phase_order = len(self.completed_phases) + 1
+            log_path = log_dir / f"{phase_order:02d}-{report.phase}-scorecard.log"
+            log_path.write_text(self.scorecard_engine.format_report(report))
+            print(f"   📊 Scorecard 日志: {log_path.name}")
+        except Exception as e:
+            print(f"   ⚠️  Scorecard 日志写入失败: {e}")
 
     def _print_final_report(self):
         """打印最终报告"""

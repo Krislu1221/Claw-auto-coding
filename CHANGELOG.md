@@ -2,6 +2,31 @@
 
 ---
 
+## v3.6.2 (2026-05-21) | Verifier 硬否决 + 子 Agent 断线恢复
+
+### ✨ 新增特性
+
+**1. Verifier 硬否决逻辑**
+- Reviewer 否决后不再只是一条记录，而是真正把任务打回 coding 阶段重写
+- 新增 `veto_retry_count` / `veto_retry_max` / `veto_retry_history` 追踪否决历史
+- 重试上限默认 3 次，超出后升级给人类审批，避免无限循环
+- 每次否决记录时间、违规数量、反馈上下文
+
+**2. 子 Agent 断线恢复**
+- 每个阶段执行失败时会记录到 `failed_agents` 状态
+- 恢复策略三级：retry（重试）→ fallback（换模型）→ escalate（升级给人类）
+- 默认 3 次全局 recovery 预算（跨阶段共享），预算耗尽后任务才报错终止
+- `record_agent_failure()` / `has_recovery_budget()` / `get_recovery_action()` / `clear_phase_failures()` 配套方法
+
+### 🔧 内部变更
+- `WorkflowState`: 新增 `veto_retry_count`、`veto_retry_max`、`veto_retry_history`、`failed_agents`、`agent_recovery_attempts` 字段
+- `_state_to_dict` / `_dict_to_state`: 序列化新增字段
+- `run()`: 阶段异常捕获增加 recovery 决策分支
+- `run()`: Reviewer 否决逻辑增加重试上限检查
+- 版本号: v3.6.1 → v3.6.2
+
+---
+
 ## v3.6.1 (2026-05-21) | 猫王审查 文档一致性修复
 
 本次只改文档/版本号，没有改逻辑。
