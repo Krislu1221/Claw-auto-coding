@@ -2,3 +2,4 @@ docs/
 PUBLISH_NOTES.md
 HEARTBEAT_TEMPLATE.md
 heartbeat_collector.py
+__pycache__/
