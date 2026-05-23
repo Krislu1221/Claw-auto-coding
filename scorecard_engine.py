@@ -28,6 +28,7 @@ Usage:
 
 import yaml
 import re
+import ast
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
@@ -111,7 +112,7 @@ def evaluate_threshold(threshold: str, signals: Dict[str, Any]) -> bool:
     实现细节：
     1. 将 true/false 替换为 Python 的 True/False
     2. 将信号变量名替换为 repr(value)（带引号的 Python 字面量）
-    3. 在受限命名空间（__builtins__={}）中 eval
+    3. 用 ast 安全求值（仅支持比较+布尔运算子集）
 
     Args:
         threshold: 阈值表达式字符串
@@ -145,14 +146,69 @@ def evaluate_threshold(threshold: str, signals: Dict[str, Any]) -> bool:
     for name in sorted(signals.keys(), key=len, reverse=True):
         expr = re.sub(r'\b' + re.escape(name) + r'\b', repr(signals[name]), expr)
 
-    # 3. 安全求值
-    #    eval 不安全 → 用受限命名空间、已知语法子集缓解
-    #    所有外部输入已被替换为 repr() 安全字面量
+    # 3. 安全求值 — 用 ast 而非 eval，ClawHub 静态分析零告警
     try:
-        result = eval(expr, {"__builtins__": {}}, {})
-        return bool(result)
+        result = _safe_bool_eval(expr)
+        return result
     except Exception:
         return False
+
+
+def _safe_bool_eval(expr: str) -> bool:
+    """用 ast 安全求值布尔表达式，仅支持比较+布尔运算"""
+    import ast
+
+    ALLOWED_NODES = {
+        ast.Expression, ast.BoolOp, ast.Compare, ast.Load,
+        ast.Constant, ast.UnaryOp, ast.Not,
+        ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.GtE,
+        ast.And, ast.Or, ast.Name,
+    }
+
+    tree = ast.parse(expr.strip(), mode='eval')
+
+    for node in ast.walk(tree):
+        if type(node) not in ALLOWED_NODES:
+            raise ValueError(f"Unsafe AST node: {type(node).__name__}")
+
+    return bool(_ast_eval_node(tree.body))
+
+
+def _ast_eval_node(node):
+    """递归求值已通过安全检查的 AST 节点"""
+    if isinstance(node, ast.Constant):
+        return node.value
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
+        return not _ast_eval_node(node.operand)
+    if isinstance(node, ast.BoolOp):
+        values = [_ast_eval_node(v) for v in node.values]
+        if isinstance(node.op, ast.And):
+            return all(values)
+        if isinstance(node.op, ast.Or):
+            return any(values)
+    if isinstance(node, ast.Compare):
+        left = _ast_eval_node(node.left)
+        for op, comp in zip(node.ops, node.comparators):
+            right = _ast_eval_node(comp)
+            if isinstance(op, ast.Eq):
+                result = (left == right)
+            elif isinstance(op, ast.NotEq):
+                result = (left != right)
+            elif isinstance(op, ast.Lt):
+                result = (left < right)
+            elif isinstance(op, ast.LtE):
+                result = (left <= right)
+            elif isinstance(op, ast.Gt):
+                result = (left > right)
+            elif isinstance(op, ast.GtE):
+                result = (left >= right)
+            else:
+                raise ValueError(f"Unknown comparison: {type(op).__name__}")
+            if not result:
+                return False
+            left = right  # 链式比较 a == b == c
+        return True
+    raise ValueError(f"Unsupported node: {type(node).__name__}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
