@@ -1,0 +1,56 @@
+{
+  "name": "auto-coding-v3",
+  "version": "3.7.0",
+  "description": "智能自主编码系统 v3.7 — 全子代理架构 + 分阶段技能注入。支持 8 步循环、Reviewer 否决权、复杂度自动分级、Risk Scorecard 量化检测",
+  "author": "Kris Lu <krislu666@foxmail.com>",
+  "license": "MIT",
+  "triggers": [
+    "auto-coding",
+    "写代码",
+    "开发",
+    "coding",
+    "karpathy",
+    "自动编码",
+    "自主编码"
+  ],
+  "keywords": [
+    "auto-coding",
+    "agentic-coding",
+    "ai-coding",
+    "tdd",
+    "code-review",
+    "risk-scorecard",
+    "skill-injection"
+  ],
+  "main": "__init__.py",
+  "files": [
+    "__init__.py",
+    "workflow_enhanced.py",
+    "auto_coding_workflow.py",
+    "state_manager.py",
+    "model_selector.py",
+    "model_auto_router.py",
+    "task_profiler.py",
+    "scorecard_engine.py",
+    "skill_injector.py",
+    "agent_soul_loader.py",
+    "complexity_analyzer.py",
+    "workers/",
+    "skills/",
+    "configs/",
+    "SKILL.md",
+    "README.md",
+    "clawhub.json"
+  ],
+  "scripts": {
+    "test": "python3 -c \"import workflow_enhanced; print('✅ modules loaded')\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Krislu1221/Claw-auto-coding"
+  },
+  "homepage": "https://clawhub.com/skills/auto-coding-v3",
+  "bugs": {
+    "url": "https://github.com/Krislu1221/Claw-auto-coding/issues"
+  }
+}

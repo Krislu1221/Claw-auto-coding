@@ -2,7 +2,7 @@
 """
 StateManager - Auto-Coding 状态持久化管理器
 
-替代 ~/.hermes/projects/{project_name}/status/，改为项目内 .auto-coding/state.json
+项目内 .auto-coding/state.json 替代外部状态目录
 支持断点续传、跨 session 恢复。
 """
 
