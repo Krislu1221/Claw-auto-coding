@@ -10,7 +10,7 @@ inject_once: true
 
 ## Overview
 
-Risk Scorecard 是 v3.7-discipline 的第一层和第二层防线。它在每个阶段的前/中/后三个时间点检测纪律违规：
+Risk Scorecard 是 v3.7.0 的第一层和第二层防线。它在每个阶段的前/中/后三个时间点检测纪律违规：
 - **阶段开始前（Pre-Mortem）**：Agent 对照 rationalizations 自问「我有没有在找借口」
 - **阶段执行中（In-Flight）**：关键操作后检测 signal 是否触发 threshold
 - **阶段结束时（Post-Mortem）**：聚合所有检测结果，输出 Scorecard Report

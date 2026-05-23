@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Risk Scorecard 检测引擎 — v3.7-discipline
+Risk Scorecard 检测引擎 — v3.7.0
 
 加载 scorecard.yaml，在阶段执行时检测信号是否触发阈值。
 

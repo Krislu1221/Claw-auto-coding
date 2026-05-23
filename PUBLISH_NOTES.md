@@ -1,6 +1,6 @@
 # PUBLISH_NOTES — ClawHub 发布脱敏记录
 
-## PII 清理状态 (v3.4.1)
+## PII 清理状态 (v3.7.0)
 
 | 类型 | 原始值 | 处理方式 |
 |------|--------|----------|
@@ -14,7 +14,7 @@
 
 - 无主动监控术语（心跳兜底、周期自动检查、自动扫描等）
 - `.clawhubignore` 排除 `tests/`、`docs/`、`.auto-coding/`
-- SKILL.md 与 README.md 版本号已同步 (v3.4.1)
+- SKILL.md 与 README.md 版本号已同步 (v3.7.0)
 
 ## 环境变量配置
 

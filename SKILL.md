@@ -4,7 +4,7 @@ description: "智能自主编码系统 v3.7-discipline — 全子代理架构 + 
 license: MIT
 ---
 
-# Auto-Coding v3.7-discipline
+# Auto-Coding v3.7.0
 
 ## 🔴 执行铁律
 
@@ -129,4 +129,4 @@ license: MIT
 
 ---
 
-*v3.7-discipline · 2026-05-22 · 虾软 🦐*
+*v3.7.0 · 2026-05-22*

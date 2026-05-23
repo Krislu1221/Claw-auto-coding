@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Auto-Coding Workflow Enhanced (v3.6.1)
+Auto-Coding Workflow Enhanced (v3.7.0)
 
 基于 AutoCodingWorkflow (v3.2) 增强：
 1. 状态持久化（.auto-coding/state.json）
@@ -105,6 +105,7 @@ class AutoCodingWorkflowEnhanced:
         self.skill_injector = None
         self.scorecard_engine = None
         self.task_profiler = None
+        self.model_router = None
         if self.constraints.get("discipline_enabled", False):
             from skill_injector import SkillInjector
             from scorecard_engine import ScorecardEngine
@@ -112,7 +113,9 @@ class AutoCodingWorkflowEnhanced:
             self.scorecard_engine = ScorecardEngine()
             from task_profiler import TaskProfiler
             self.task_profiler = TaskProfiler(str(self.project_dir))
-            print(f"🔧 工程纪律模式已启用（SkillInjector + ScorecardEngine + TaskProfiler）")
+            from model_auto_router import ModelAutoRouter
+            self.model_router = ModelAutoRouter()
+            print(f"🔧 工程纪律模式已启用（SkillInjector + ScorecardEngine + TaskProfiler + AutoRouter）")
 
         # === 运行时状态 ===
         self.current_phase = "idle"
@@ -198,7 +201,7 @@ class AutoCodingWorkflowEnhanced:
                 task_id=self.task_id
             )
             print(f"\n{'='*60}")
-            print(f"🚀 Auto-Coding Enhanced (v3.6.1) 启动")
+            print(f"🚀 Auto-Coding Enhanced (v3.7.0) 启动")
             print(f"{'='*60}")
             print(f"📋 需求：{self.requirements[:100]}...")
             print(f"📁 项目目录：{self.project_dir}")
@@ -560,6 +563,22 @@ class AutoCodingWorkflowEnhanced:
                     print(f"   📥 技能注入: {meta.get('skills', [])} (~{meta.get('token_estimate', 0)} tokens)")
             except Exception as e:
                 print(f"   ⚠️  技能注入失败（降级跳过）: {e}")
+
+        # v3.7: 自动模型路由（Pro 推理 / Flash 执行）
+        if self.model_router:
+            try:
+                from task_profiler import classify_task
+                model, thinking = self.model_router.route(
+                    phase=phase_id,
+                    category=self.context.get("_task_category"),
+                    context_tokens=self.context.get("_context_tokens", 0),
+                )
+                print(f"   🧠 Auto路由: {model} (thinking={thinking})")
+                # 写入 context 供子 agent spawn 时使用
+                self.context["_routed_model"] = model
+                self.context["_routed_thinking"] = thinking
+            except Exception as e:
+                print(f"   ⚠️  路由决策失败（降级跳过）: {e}")
 
         if phase_id == "design":
             await self._phase_design(phase_config)

@@ -1,7 +1,7 @@
-# Auto-Coding v3.6.1 — 完整文档
+# Auto-Coding v3.7.0 — 完整文档
 
-**版本**: v3.6.1
-**更新日期**: 2026-05-21
+**版本**: v3.7.0
+**更新日期**: 2026-05-22
 
 ---
 
@@ -390,4 +390,4 @@ export AUTO_CODING_AGENCY_PATH=/path/to/agency-agents
 
 ---
 
-*Last updated: 2026-05-09 | Auto-Coding v3.3*
+*Last updated: 2026-05-22 | Auto-Coding v3.7.0*

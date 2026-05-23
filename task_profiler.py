@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Task Profiler — v3.7-discipline
+Task Profiler — v3.7.0
 
 项目级任务画像系统。持续积累每次子代理任务的实际耗时、token 数据，
 按任务类型/模型/阶段动态校准超时窗口 + 中断风险预测。

@@ -2,6 +2,18 @@
 
 ---
 
+## v3.7.0 (2026-05-22) | Risk Scorecard + 技能模块化 + Reviewer 否决权
+
+- Risk Scorecard 五元组量化检测
+- 12 个独立技能文件，按阶段动态注入（≤2 个/阶段）
+- Reviewer 否决权 + 6 阶段调试子流程
+- 复杂度自动分级（A/B/C）
+- 模型降级链：deepseek-v4-pro → MiMo v2.5 Pro
+- `model_auto_router.py` — Pro 推理 / Flash 执行自动路由
+- `task_profiler.py` — 任务画像，动态校准超时窗口
+
+---
+
 ## v3.6.2 (2026-05-21) | Verifier 硬否决 + 子 Agent 断线恢复
 
 ### ✨ 新增特性
