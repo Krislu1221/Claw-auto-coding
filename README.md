@@ -139,7 +139,7 @@ await workflow.run()
 
 ## 👤 作者
 
-Your Name <your-email@example.com>
+Kris Lu <krislu666@foxmail.com>
 
 ## 📄 许可
 
