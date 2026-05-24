@@ -68,7 +68,7 @@ tasks:
     description: "创建 User Model 和迁移脚本"
     files: ["models/user.py", "migrations/001_user.py"]
     dependencies: []
-    done_criteria: "User 表可创建，字段包含 id/email/credential_hash"
+    done_criteria: "User 表可创建，字段包含 id/email/password_hash"
     critical_path: true
     estimated_complexity: "B"
 
@@ -76,7 +76,7 @@ tasks:
     description: "实现 POST /register 端点"
     files: ["api/auth.py"]
     dependencies: ["T1"]
-    done_criteria: "POST /register 接收 email+credential，返回 201 + user_id"
+    done_criteria: "POST /register 接收 email+password，返回 201 + user_id"
     critical_path: true
     estimated_complexity: "B"
 ```

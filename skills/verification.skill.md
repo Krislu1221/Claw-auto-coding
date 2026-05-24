@@ -44,8 +44,8 @@ version: "1.0.0"
 
 步骤 2: 验收标准核对
   ├─ 逐条对比 Step 1 的验收标准 vs 当前交付物
-  │   - 标准 A："登录 API 支持 email+credential 认证" → API 实际行为？
-  │   - 标准 B："密码使用 hash 哈希" → 检查代码是否使用 hash
+  │   - 标准 A："登录 API 支持 email+password 认证" → API 实际行为？
+  │   - 标准 B："密码使用 bcrypt 哈希" → 检查代码是否使用 bcrypt
   │   - 标准 C："错误返回 JSON {error: '...'}" → 检查错误处理
   ├─ 不满足 → 🔴 阻塞（流程没有真正走完）
   └─ 输出：验收标准核对表
@@ -87,7 +87,7 @@ version: "1.0.0"
 | # | 验收标准 | 实际行为 | 结果 |
 |---|---------|---------|------|
 | 1 | 用户可用 email 注册 | POST /register 201 | ✅   |
-| 2 | 密码 hash 哈希    | models/user.py L42 | ✅   |
+| 2 | 密码 bcrypt 哈希    | models/user.py L42 | ✅   |
 | 3 | 错误返回 JSON       | api/auth.py error_handler | ✅   |
 ```
 
