@@ -76,10 +76,10 @@ class ModelSelector:
             print(f"✅ 使用用户显式指定的 {len(self.available_models)} 个模型")
             return
         
-        # 优先级 2: 环境变量 ROUNDTable_MODELS
+        # 优先级 2: 环境变量 AUTO_CODING_MODELS
         # 格式："model1:tag1,tag2;model2:tag3,tag4"
         # 示例："bailian/glm-5:chinese;bailian/kimi-k2.5:creative"
-        env_models = os.environ.get('ROUNDTable_MODELS')
+        env_models = os.environ.get('AUTO_CODING_MODELS')
         if env_models:
             parsed_models = []
             for item in env_models.split(';'):

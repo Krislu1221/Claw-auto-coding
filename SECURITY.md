@@ -1,6 +1,6 @@
 # Auto-Coding 智能编码系统 — 安全说明
 
-**v3.7.4 安全架构说明**
+**v3.7.6 安全架构说明**
 *最后更新: 2026-05-24*
 
 ---
@@ -60,13 +60,18 @@ Auto-Coding 是一个**本地运行的子代理编排系统**。所有子 agent 
 
 ## ⚙️ 安全配置
 
-```bash
-# 飞书通知（可选）
-export AUTO_CODING_FEISHU_TO="ou_xxx"    # 接收通知的飞书用户 ID
+### 可选环境变量
 
-# 模型 Provider（仅允许 volcengine-plan）
-# 通过 gateway config 配置，不在代码中硬编码
-```
+| 变量 | 文件 | 用途 | 示例 |
+|------|------|------|------|
+| `AUTO_CODING_FEISHU_TO` | `auto_coding_workflow.py:493` | 接收飞书通知的用户 ID | `ou_xxx` |
+| `AUTO_CODING_MODELS` | `model_selector.py:82` | 手动指定模型列表 | `"model1:tag1;model2:tag2"` |
+| `AUTO_CODING_MODEL_{ROLE}` | `auto_coding_workflow.py:1196` | 按角色指定模型 | `AUTO_CODING_MODEL_COORDINATOR=doubao-pro` |
+| `AUTO_CODING_FALLBACK_MODELS` | `auto_coding_workflow.py:1029` | 降级模型列表 | 逗号分隔的模型名 |
+
+- 所有环境变量均为**可选**配置
+- 默认从 gateway config 自动加载模型
+- 模型 Provider 约束在 `model_auto_router.py` 中（仅 volcengine-plan）
 
 ---
 
@@ -96,4 +101,4 @@ export AUTO_CODING_FEISHU_TO="ou_xxx"    # 接收通知的飞书用户 ID
 
 ---
 
-*版本: v3.7.4 — 安全说明与代码实现一一对应*
+*版本: v3.7.6 — 安全说明与代码实现一一对应*

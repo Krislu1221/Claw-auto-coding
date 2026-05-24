@@ -17,6 +17,7 @@ FeishuNotifier - Auto-Coding 飞书通知模块
 
 import json
 import re
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
@@ -173,7 +174,7 @@ class FeishuNotifier:
             "task_id": task_id,
             "operation": operation,
             "files": files,
-            "created_at": __import__('datetime').datetime.now().isoformat(),
+            "created_at": datetime.now().isoformat(),
             "status": "pending",
         }
         with open(pending_file, "w", encoding="utf-8") as f:
@@ -206,7 +207,7 @@ class FeishuNotifier:
                     data = json.load(f)
                 if data.get("approval_id") == approval_id:
                     data["status"] = decision
-                    data["resolved_at"] = __import__('datetime').datetime.now().isoformat()
+                    data["resolved_at"] = datetime.now().isoformat()
                     with open(pending_file, "w", encoding="utf-8") as f:
                         json.dump(data, f, ensure_ascii=False, indent=2)
             except (json.JSONDecodeError, KeyError):
