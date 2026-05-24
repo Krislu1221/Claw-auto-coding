@@ -471,11 +471,14 @@ class AutoCodingWorkflow:
             import subprocess
             check_script = Path(__file__).parent / "check_auto_coding_status.py"
             cron_name = f"ac-monitor-{self.state.task_id if self.state else 'unknown'}"
+            # v3.7.4: 清理路径中的特殊字符，防止命令注入
+            safe_project_dir = str(self.project_dir).replace('\\', '\\\\').replace('"', '\\"').replace('$', '\\$').replace('`', '\\`')
+            safe_check_script = str(check_script).replace('\\', '\\\\').replace('"', '\\"').replace('$', '\\$').replace('`', '\\`')
             cron_message = (
                 f"检查 Auto-Coding 任务状态\\n"
                 f"- 任务ID: {self.state.task_id if self.state else 'unknown'}\\n"
-                f"- 项目目录: {self.project_dir}\\n"
-                f"- 执行: python3 {check_script} {self.project_dir}\\n"
+                f"- 项目目录: {safe_project_dir}\\n"
+                f"- 执行: python3 {safe_check_script} {safe_project_dir}\\n"
                 f"- 根据 should_notify 和 should_delete_cron 决策"
             )
             subprocess.run([

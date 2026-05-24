@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Auto-Coding Workflow Enhanced (v3.7.0)
+Auto-Coding Workflow Enhanced (v3.7.4)
 
 基于 AutoCodingWorkflow (v3.2) 增强：
 1. 状态持久化（.auto-coding/state.json）
@@ -201,7 +201,7 @@ class AutoCodingWorkflowEnhanced:
                 task_id=self.task_id
             )
             print(f"\n{'='*60}")
-            print(f"🚀 Auto-Coding Enhanced (v3.7.0) 启动")
+            print(f"🚀 Auto-Coding Enhanced (v3.7.4) 启动")
             print(f"{'='*60}")
             print(f"📋 需求：{self.requirements[:100]}...")
             print(f"📁 项目目录：{self.project_dir}")

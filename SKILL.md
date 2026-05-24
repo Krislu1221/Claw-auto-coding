@@ -1,10 +1,10 @@
 ---
 name: auto-coding-v3
-description: "智能自主编码系统 v3.7.0 — 全子代理架构 + 分阶段技能注入。支持 8 步循环、Reviewer 否决权、复杂度自动分级、Risk Scorecard 量化检测。触发词: auto-coding, 写代码, 开发, coding, karpathy"
+description: "智能自主编码系统 v3.7.4 — 全子代理架构 + 分阶段技能注入。支持 8 步循环、Reviewer 否决权、复杂度自动分级、Risk Scorecard 量化检测。触发词: /auto-coding, auto-coding, karpathy, 自动编码, 自主编码"
 license: MIT
 ---
 
-# Auto-Coding v3.7.0 - 智能自主编码系统
+# Auto-Coding v3.7.4 - 智能自主编码系统
 
 ## 设计理念
 
@@ -258,8 +258,8 @@ await wf.run()
 ```
 
 ### 触发词
-`auto-coding` | `写代码` | `开发` | `coding` | `karpathy` | `自动编码` | `自主编码`
+`/auto-coding` | `auto-coding` | `karpathy` | `自动编码` | `自主编码`
 
 ---
 
-*v3.7.0 · 2026-05-23*
+*v3.7.4 · 2026-05-24*

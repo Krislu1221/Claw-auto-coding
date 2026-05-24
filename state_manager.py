@@ -31,7 +31,7 @@ class TaskState:
 @dataclass
 class WorkflowState:
     """工作流全局状态"""
-    version: str = "3.7.0"
+    version: str = "3.7.4"
     task_id: str = ""
     requirements: str = ""
     current_phase: str = "idle"         # idle/design/decomposition/coding/testing/reflection/optimization/verification/output
