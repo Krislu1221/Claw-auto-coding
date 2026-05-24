@@ -4,7 +4,7 @@
 
 | 类型 | 原始值 | 处理方式 |
 |------|--------|----------|
-| 作者邮箱 | krislu666@foxmail.com | 改为 `your-email@example.com` |
+| 作者邮箱 | krislu666@foxmail.com | 改为无邮箱（隐私） |
 | 飞书用户 ID | ou_71a4f771e6fb01261ea476b657b4f344 | 改为环境变量 `AUTO_CODING_FEISHU_TO` |
 | 实例名 | 虾软/虾总 | 移除，改为通用描述 |
 | 硬编码路径 | ~/.enhance-claw/instances/虾软/ | 移除，改为 `project_dir` 参数 |
