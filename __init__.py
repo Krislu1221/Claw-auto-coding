@@ -15,10 +15,10 @@ Usage:
     result = await workflow.run()
 
 Version:
-    v3.7.4 - 工程纪律系统（SkillInjector + ScorecardEngine + 审计追踪 + 子 Agent 问责）
+    v3.7.5 - 工程纪律系统（SkillInjector + ScorecardEngine + 审计追踪 + 子 Agent 问责）
 """
 
-__version__ = "3.7.4"
+__version__ = "3.7.5"
 __all__ = [
     "AutoCodingWorkflow",
     "AutoCodingWorkflowEnhanced",
