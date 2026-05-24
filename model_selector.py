@@ -66,7 +66,7 @@ class ModelSelector:
         
         优先级：
         1. 用户显式指定（最高优先级）
-        2. 环境变量 ROUNDTable_MODELS（次高优先级）
+        2. 环境变量 AUTO_CODING_MODELS（次高优先级）
         3. OpenClaw 官方 API
         4. 标准单一模型配置（降级方案）
         """
