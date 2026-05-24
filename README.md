@@ -1,6 +1,6 @@
-# Auto-Coding v3.7.7 - 智能自主编码系统
+# Auto-Coding v3.7.8 - 智能自主编码系统
 
-[![Version](https://img.shields.io/badge/version-3.7.7-blue.svg)](https://github.com/Krislu1221/Claw-auto-coding)
+[![Version](https://img.shields.io/badge/version-3.7.8-blue.svg)](https://github.com/Krislu1221/Claw-auto-coding)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://python.org)
 
@@ -217,4 +217,4 @@ MIT License
 
 ---
 
-*Auto-Coding v3.7.7 · 2026-05-23*
+*Auto-Coding v3.7.8 · 2026-05-23*
