@@ -218,3 +218,7 @@ MIT License
 ---
 
 *Auto-Coding v3.7.11 · 2026-05-23*
+
+## Download History
+
+[![Download History](https://skill-history.com/chart/krislu1221/auto-coding-skill.svg)](https://skill-history.com/krislu1221/auto-coding-skill)
